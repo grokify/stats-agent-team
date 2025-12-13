@@ -8,7 +8,9 @@ This project implements a sophisticated multi-agent architecture that leverages 
 
 ## Architecture
 
-The system consists of **3 specialized agents** working together:
+The system consists of **3 specialized agents** with **2 orchestration options**:
+
+> **NEW**: This project now includes **two orchestration agents** - one using trpc-agent (LLM-based) and one using Eino (deterministic graph-based). See [README_EINO.md](README_EINO.md) for details on the Eino orchestrator.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -51,12 +53,20 @@ The system consists of **3 specialized agents** working together:
 - Flags hallucinations and discrepancies
 - Returns verification results with reasons
 
-#### 3. Orchestration Agent (`agents/orchestration/`)
+#### 3a. Orchestration Agent - trpc-agent (`agents/orchestration/`)
+- LLM-based decision making for workflow
 - Coordinates Research → Verification workflow
-- Implements retry logic if insufficient verified stats
-- Makes decisions on when to stop/continue
-- Formats final JSON output
-- Quality control and error handling
+- Implements adaptive retry logic
+- Dynamic quality control
+- Port 8000 (HTTP), 9000 (A2A)
+
+#### 3b. Orchestration Agent - Eino (`agents/orchestration-eino/`) ⭐ NEW
+- Deterministic graph-based workflow
+- Type-safe orchestration with compile-time checks
+- Predictable, reproducible behavior
+- Faster and lower cost (no LLM for orchestration)
+- Port 8003 (HTTP), 9003 (A2A)
+- **Recommended for production use**
 
 ## Features
 
@@ -137,12 +147,17 @@ make build
 
 ### Running the Agents
 
-#### Option 1: Run all agents together
+#### Option 1: Run all agents with Eino orchestrator (Recommended)
+```bash
+make run-all-eino
+```
+
+#### Option 2: Run all agents with trpc-agent orchestrator
 ```bash
 make run-all
 ```
 
-#### Option 2: Run each agent separately (in different terminals)
+#### Option 3: Run each agent separately (in different terminals)
 ```bash
 # Terminal 1: Research Agent
 make run-research
@@ -150,8 +165,9 @@ make run-research
 # Terminal 2: Verification Agent
 make run-verification
 
-# Terminal 3: Orchestration Agent
-make run-orchestration
+# Terminal 3: Orchestration Agent (choose one)
+make run-orchestration       # trpc-agent version
+make run-orchestration-eino  # Eino version (recommended)
 ```
 
 ### Using the CLI
@@ -173,7 +189,17 @@ Once the agents are running, use the CLI to search for statistics:
 You can also call the agents directly via HTTP:
 
 ```bash
-# Call orchestration agent
+# Call Eino orchestration agent (recommended - deterministic)
+curl -X POST http://localhost:8003/orchestrate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "climate change",
+    "min_verified_stats": 10,
+    "max_candidates": 30,
+    "reputable_only": true
+  }'
+
+# Or call trpc-agent orchestration agent (LLM-based)
 curl -X POST http://localhost:8000/orchestrate \
   -H "Content-Type: application/json" \
   -d '{
@@ -197,7 +223,8 @@ curl -X POST http://localhost:8000/orchestrate \
 | `SEARCH_API_KEY` | Search API key | Required |
 | `RESEARCH_AGENT_URL` | Research agent URL | `http://localhost:8001` |
 | `VERIFICATION_AGENT_URL` | Verification agent URL | `http://localhost:8002` |
-| `ORCHESTRATOR_URL` | Orchestrator URL | `http://localhost:8000` |
+| `ORCHESTRATOR_URL` | trpc-agent orchestrator URL | `http://localhost:8000` |
+| `ORCHESTRATOR_EINO_URL` | Eino orchestrator URL | `http://localhost:8003` |
 | `A2A_ENABLED` | Enable A2A protocol | `true` |
 | `A2A_AUTH_TYPE` | A2A auth type | `apikey` |
 | `A2A_AUTH_TOKEN` | A2A auth token | Optional |
@@ -206,16 +233,19 @@ curl -X POST http://localhost:8000/orchestrate \
 
 | Agent | HTTP Port | A2A Port |
 |-------|-----------|----------|
-| Orchestration | 8000 | 9000 |
+| Orchestration (trpc-agent) | 8000 | 9000 |
 | Research | 8001 | 9001 |
 | Verification | 8002 | 9002 |
+| **Orchestration (Eino)** ⭐ | **8003** | **9003** |
 
 ## Project Structure
 
 ```
 stats-agent/
 ├── agents/
-│   ├── orchestration/      # Orchestration agent
+│   ├── orchestration/      # Orchestration agent (trpc-agent)
+│   │   └── main.go
+│   ├── orchestration-eino/ # Orchestration agent (Eino) ⭐
 │   │   └── main.go
 │   ├── research/           # Research agent
 │   │   └── main.go
@@ -256,7 +286,9 @@ make clean
 ## Technology Stack
 
 - **Language**: Go 1.21+
-- **Agent Framework**: [trpc-agent-go](https://github.com/trpc-group/trpc-agent-go)
+- **Agent Frameworks**:
+  - [trpc-agent-go](https://github.com/trpc-group/trpc-agent-go) - LLM-based orchestration
+  - [Eino](https://github.com/cloudwego/eino) - Deterministic graph orchestration ⭐
 - **A2A Protocol**: [trpc-a2a-go](https://github.com/trpc-group/trpc-a2a-go)
 - **LLM**: Configurable (OpenAI, etc.)
 - **Search**: Configurable (Google, etc.)

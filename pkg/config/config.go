@@ -16,9 +16,10 @@ type Config struct {
 	SearchAPIKey   string
 
 	// Agent Configuration
-	ResearchAgentURL     string
-	VerificationAgentURL string
-	OrchestratorURL      string
+	ResearchAgentURL       string
+	VerificationAgentURL   string
+	OrchestratorURL        string
+	OrchestratorEinoURL    string
 
 	// A2A Protocol Configuration
 	A2AEnabled bool
@@ -42,6 +43,7 @@ func LoadConfig() *Config {
 		ResearchAgentURL:     getEnv("RESEARCH_AGENT_URL", "http://localhost:8001"),
 		VerificationAgentURL: getEnv("VERIFICATION_AGENT_URL", "http://localhost:8002"),
 		OrchestratorURL:      getEnv("ORCHESTRATOR_URL", "http://localhost:8000"),
+		OrchestratorEinoURL:  getEnv("ORCHESTRATOR_EINO_URL", "http://localhost:8003"),
 
 		// A2A Protocol
 		A2AEnabled:   getEnv("A2A_ENABLED", "true") == "true",
