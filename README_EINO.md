@@ -6,15 +6,16 @@ A deterministic orchestration agent built with [Eino framework](https://github.c
 
 This project now includes **two orchestration agents** with different characteristics:
 
-### 1. trpc-agent Orchestration (Port 8000/9000)
-- **Framework**: [trpc-agent-go](https://github.com/trpc-group/trpc-agent-go)
-- **Approach**: LLM-based decision making
+### 1. ADK Orchestration (Port 8000)
+- **Framework**: [Google ADK (Agent Development Kit)](https://github.com/google/adk-go)
+- **Approach**: LLM-based decision making (Gemini 2.0 Flash)
 - **Characteristics**:
   - Flexible, adaptive behavior
   - Uses LLM for orchestration decisions
   - More dynamic but less predictable
+  - Ideal for complex decision-making workflows
 
-### 2. Eino Orchestration (Port 8003/9003) ⭐ NEW
+### 2. Eino Orchestration (Port 8003) ⭐ RECOMMENDED
 - **Framework**: [Eino](https://github.com/cloudwego/eino)
 - **Approach**: Deterministic graph-based workflow
 - **Characteristics**:
@@ -22,6 +23,7 @@ This project now includes **two orchestration agents** with different characteri
   - Type-safe graph orchestration
   - Compile-time validation
   - More reliable and faster
+  - **Recommended for production use**
 
 ## Why Eino for Orchestration?
 
@@ -140,11 +142,12 @@ The Eino orchestrator also supports A2A protocol for agent-to-agent communicatio
 - ✅ Your workflow is **well-defined and stable**
 - ✅ You want **compile-time type safety**
 
-### Use trpc-agent Orchestrator When:
+### Use ADK Orchestrator When:
 - ✅ You need **adaptive decision making**
 - ✅ Workflow logic **changes based on content**
-- ✅ You want **LLM reasoning** for orchestration
+- ✅ You want **LLM reasoning** for orchestration (Gemini 2.0 Flash)
 - ✅ Requirements are **less well-defined**
+- ✅ You need **complex decision trees** in orchestration
 
 ## Eino Graph Implementation
 

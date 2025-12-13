@@ -12,8 +12,6 @@ import (
 	"github.com/cloudwego/eino/compose"
 	"github.com/grokify/stats-agent/pkg/config"
 	"github.com/grokify/stats-agent/pkg/models"
-	"trpc.group/trpc-go/trpc-a2a-go/agent"
-	"trpc.group/trpc-go/trpc-a2a-go/server"
 )
 
 // EinoOrchestrationAgent uses Eino framework for deterministic orchestration
@@ -323,54 +321,6 @@ func (oa *EinoOrchestrationAgent) HandleOrchestrationRequest(w http.ResponseWrit
 	json.NewEncoder(w).Encode(resp)
 }
 
-// A2A Server
-func (oa *EinoOrchestrationAgent) StartA2AServer(port int) error {
-	card := &agent.AgentCard{
-		Name:        "statistics-orchestration-eino-agent",
-		Description: "Deterministic orchestration using Eino framework for verified statistics",
-		Skills: []agent.Skill{
-			{
-				Name:        "orchestrate-statistics-eino",
-				Description: "Deterministic workflow coordination using Eino Graph",
-				InputMode:   "application/json",
-				OutputMode:  "application/json",
-			},
-		},
-	}
-
-	srv := server.NewServer(
-		server.WithAgentCard(card),
-		server.WithMessageHandler(oa),
-	)
-
-	addr := fmt.Sprintf(":%d", port)
-	log.Printf("[Eino Orchestrator] Starting A2A server on %s", addr)
-	return http.ListenAndServe(addr, srv)
-}
-
-// ProcessMessage implements A2A MessageHandler interface
-func (oa *EinoOrchestrationAgent) ProcessMessage(ctx context.Context, msg *agent.Message) (*agent.Message, error) {
-	var req models.OrchestrationRequest
-	if err := json.Unmarshal([]byte(msg.Content), &req); err != nil {
-		return nil, fmt.Errorf("invalid message content: %w", err)
-	}
-
-	resp, err := oa.Orchestrate(ctx, &req)
-	if err != nil {
-		return nil, err
-	}
-
-	respData, err := json.Marshal(resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal response: %w", err)
-	}
-
-	return &agent.Message{
-		Content: string(respData),
-		Role:    "assistant",
-	}, nil
-}
-
 // State types for the workflow
 type ResearchState struct {
 	Request    *models.OrchestrationRequest
@@ -395,24 +345,14 @@ func main() {
 	einoAgent := NewEinoOrchestrationAgent(cfg)
 
 	// Start HTTP server
-	go func() {
-		http.HandleFunc("/orchestrate", einoAgent.HandleOrchestrationRequest)
-		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
-		})
-		log.Println("[Eino Orchestrator] HTTP server starting on :8003")
-		if err := http.ListenAndServe(":8003", nil); err != nil {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
+	http.HandleFunc("/orchestrate", einoAgent.HandleOrchestrationRequest)
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 
-	// Start A2A server if enabled
-	if cfg.A2AEnabled {
-		if err := einoAgent.StartA2AServer(9003); err != nil {
-			log.Fatalf("A2A server failed: %v", err)
-		}
-	} else {
-		select {}
+	log.Println("[Eino Orchestrator] HTTP server starting on :8003")
+	if err := http.ListenAndServe(":8003", nil); err != nil {
+		log.Fatalf("HTTP server failed: %v", err)
 	}
 }

@@ -7,71 +7,120 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
+
+	"google.golang.org/adk/agent"
+	"google.golang.org/adk/agent/llmagent"
+	"google.golang.org/adk/model/gemini"
+	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/genai"
 
 	"github.com/grokify/stats-agent/pkg/config"
 	"github.com/grokify/stats-agent/pkg/models"
-	"trpc.group/trpc-go/trpc-a2a-go/agent"
-	"trpc.group/trpc-go/trpc-a2a-go/client"
-	"trpc.group/trpc-go/trpc-a2a-go/server"
-	agentgo "trpc.group/trpc-go/trpc-agent-go"
 )
 
-// OrchestrationAgent coordinates the research and verification agents
+// OrchestrationAgent uses ADK to coordinate research and verification agents
 type OrchestrationAgent struct {
-	cfg              *config.Config
-	client           *http.Client
-	agent            *agentgo.Agent
-	researchClient   *client.Client
-	verificationClient *client.Client
+	cfg      *config.Config
+	client   *http.Client
+	adkAgent agent.Agent
 }
 
-// NewOrchestrationAgent creates a new orchestration agent
-func NewOrchestrationAgent(cfg *config.Config) *OrchestrationAgent {
-	// Initialize the trpc-agent
-	agentInstance := agentgo.NewAgent(
-		agentgo.WithName("statistics-orchestration-agent"),
-		agentgo.WithDescription("Coordinates research and verification agents to find verified statistics"),
-		agentgo.WithSystemPrompt(`You are an orchestration agent that coordinates multiple agents to find verified statistics.
+// OrchestrationInput defines input for orchestration tool
+type OrchestrationInput struct {
+	Topic            string `json:"topic" jsonschema:"description=The topic to research statistics for"`
+	MinVerifiedStats int    `json:"min_verified_stats" jsonschema:"description=Minimum number of verified statistics required"`
+	MaxCandidates    int    `json:"max_candidates" jsonschema:"description=Maximum number of candidate statistics to gather"`
+	ReputableOnly    bool   `json:"reputable_only" jsonschema:"description=Only use reputable sources"`
+}
 
-Your workflow:
-1. Receive a request for statistics on a topic
-2. Send request to research agent to find candidate statistics
-3. Send candidates to verification agent for validation
-4. If not enough verified statistics, request more from research agent
-5. Return the final set of verified statistics
+// OrchestrationToolOutput defines output from orchestration tool
+type OrchestrationToolOutput struct {
+	Response *models.OrchestrationResponse `json:"response"`
+}
 
-Decision-making criteria:
-- Ensure minimum number of verified statistics is met
-- Stop when sufficient verified statistics are obtained
-- Handle failures gracefully with retries
-- Prioritize quality over quantity`),
-	)
+// NewOrchestrationAgent creates a new ADK-based orchestration agent
+func NewOrchestrationAgent(cfg *config.Config) (*OrchestrationAgent, error) {
+	ctx := context.Background()
+
+	// Create Gemini model
+	model, err := gemini.NewModel(ctx, "gemini-2.0-flash-exp", &genai.ClientConfig{
+		APIKey: os.Getenv("GOOGLE_API_KEY"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create model: %w", err)
+	}
 
 	oa := &OrchestrationAgent{
 		cfg:    cfg,
 		client: &http.Client{Timeout: 60 * time.Second},
-		agent:  agentInstance,
 	}
 
-	// Initialize A2A clients if enabled
-	if cfg.A2AEnabled {
-		oa.researchClient = client.NewClient(
-			client.WithAgentURL(cfg.ResearchAgentURL),
-		)
-		oa.verificationClient = client.NewClient(
-			client.WithAgentURL(cfg.VerificationAgentURL),
-		)
+	// Create orchestration tool
+	orchestrationTool, err := functiontool.New(functiontool.Config{
+		Name:        "orchestrate_statistics_workflow",
+		Description: "Coordinates research and verification agents to find verified statistics on a topic",
+	}, oa.orchestrationToolHandler)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create orchestration tool: %w", err)
 	}
 
-	return oa
+	// Create ADK agent
+	adkAgent, err := llmagent.New(llmagent.Config{
+		Name:        "statistics_orchestration_agent",
+		Model:       model,
+		Description: "Orchestrates multi-agent workflow to find and verify statistics",
+		Instruction: `You are a statistics orchestration agent. Your job is to:
+1. Coordinate the research agent to find candidate statistics
+2. Send candidates to the verification agent for validation
+3. Retry if needed to meet the target number of verified statistics
+4. Return a final set of verified statistics with sources
+
+Workflow:
+- Request statistics from research agent based on topic
+- Send candidates to verification agent
+- Collect verified statistics
+- If target not met and retries available, request more candidates
+- Build final response with all verified statistics`,
+		Tools: []tool.Tool{orchestrationTool},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ADK agent: %w", err)
+	}
+
+	oa.adkAgent = adkAgent
+
+	return oa, nil
 }
 
-// Orchestrate coordinates the workflow to find verified statistics
-func (oa *OrchestrationAgent) Orchestrate(ctx context.Context, req *models.OrchestrationRequest) (*models.OrchestrationResponse, error) {
-	log.Printf("Orchestration Agent: Starting orchestration for topic: %s", req.Topic)
-	log.Printf("Target: %d verified statistics, max %d candidates", req.MinVerifiedStats, req.MaxCandidates)
+// orchestrationToolHandler implements the orchestration logic
+func (oa *OrchestrationAgent) orchestrationToolHandler(ctx tool.Context, input OrchestrationInput) (OrchestrationToolOutput, error) {
+	log.Printf("Orchestration Agent: Starting orchestration for topic: %s", input.Topic)
+	log.Printf("Target: %d verified statistics, max %d candidates", input.MinVerifiedStats, input.MaxCandidates)
 
+	req := &models.OrchestrationRequest{
+		Topic:            input.Topic,
+		MinVerifiedStats: input.MinVerifiedStats,
+		MaxCandidates:    input.MaxCandidates,
+		ReputableOnly:    input.ReputableOnly,
+	}
+
+	// Use background context since tool.Context is different
+	bgCtx := context.Background()
+	response, err := oa.orchestrate(bgCtx, req)
+	if err != nil {
+		return OrchestrationToolOutput{}, fmt.Errorf("orchestration failed: %w", err)
+	}
+
+	return OrchestrationToolOutput{
+		Response: response,
+	}, nil
+}
+
+// orchestrate coordinates the workflow to find verified statistics
+func (oa *OrchestrationAgent) orchestrate(ctx context.Context, req *models.OrchestrationRequest) (*models.OrchestrationResponse, error) {
 	var allCandidates []models.CandidateStatistic
 	var verifiedStatistics []models.Statistic
 	totalVerified := 0
@@ -177,16 +226,8 @@ func (oa *OrchestrationAgent) Orchestrate(ctx context.Context, req *models.Orche
 	return response, nil
 }
 
-// callResearchAgent calls the research agent (via HTTP or A2A)
+// callResearchAgent calls the research agent via HTTP
 func (oa *OrchestrationAgent) callResearchAgent(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
-	if oa.cfg.A2AEnabled && oa.researchClient != nil {
-		return oa.callResearchAgentA2A(ctx, req)
-	}
-	return oa.callResearchAgentHTTP(ctx, req)
-}
-
-// callResearchAgentHTTP calls the research agent via HTTP
-func (oa *OrchestrationAgent) callResearchAgentHTTP(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
 	reqData, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -218,41 +259,8 @@ func (oa *OrchestrationAgent) callResearchAgentHTTP(ctx context.Context, req *mo
 	return &researchResp, nil
 }
 
-// callResearchAgentA2A calls the research agent via A2A protocol
-func (oa *OrchestrationAgent) callResearchAgentA2A(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
-	reqData, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	msg := &agent.Message{
-		Content: string(reqData),
-		Role:    "user",
-	}
-
-	respMsg, err := oa.researchClient.Send(ctx, msg)
-	if err != nil {
-		return nil, fmt.Errorf("A2A request failed: %w", err)
-	}
-
-	var researchResp models.ResearchResponse
-	if err := json.Unmarshal([]byte(respMsg.Content), &researchResp); err != nil {
-		return nil, fmt.Errorf("failed to decode A2A response: %w", err)
-	}
-
-	return &researchResp, nil
-}
-
-// callVerificationAgent calls the verification agent (via HTTP or A2A)
+// callVerificationAgent calls the verification agent via HTTP
 func (oa *OrchestrationAgent) callVerificationAgent(ctx context.Context, req *models.VerificationRequest) (*models.VerificationResponse, error) {
-	if oa.cfg.A2AEnabled && oa.verificationClient != nil {
-		return oa.callVerificationAgentA2A(ctx, req)
-	}
-	return oa.callVerificationAgentHTTP(ctx, req)
-}
-
-// callVerificationAgentHTTP calls the verification agent via HTTP
-func (oa *OrchestrationAgent) callVerificationAgentHTTP(ctx context.Context, req *models.VerificationRequest) (*models.VerificationResponse, error) {
 	reqData, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
@@ -284,29 +292,9 @@ func (oa *OrchestrationAgent) callVerificationAgentHTTP(ctx context.Context, req
 	return &verifyResp, nil
 }
 
-// callVerificationAgentA2A calls the verification agent via A2A protocol
-func (oa *OrchestrationAgent) callVerificationAgentA2A(ctx context.Context, req *models.VerificationRequest) (*models.VerificationResponse, error) {
-	reqData, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	msg := &agent.Message{
-		Content: string(reqData),
-		Role:    "user",
-	}
-
-	respMsg, err := oa.verificationClient.Send(ctx, msg)
-	if err != nil {
-		return nil, fmt.Errorf("A2A request failed: %w", err)
-	}
-
-	var verifyResp models.VerificationResponse
-	if err := json.Unmarshal([]byte(respMsg.Content), &verifyResp); err != nil {
-		return nil, fmt.Errorf("failed to decode A2A response: %w", err)
-	}
-
-	return &verifyResp, nil
+// Orchestrate is the public method for orchestrating the workflow
+func (oa *OrchestrationAgent) Orchestrate(ctx context.Context, req *models.OrchestrationRequest) (*models.OrchestrationResponse, error) {
+	return oa.orchestrate(ctx, req)
 }
 
 // HandleOrchestrationRequest is the HTTP handler for orchestration requests
@@ -340,80 +328,24 @@ func (oa *OrchestrationAgent) HandleOrchestrationRequest(w http.ResponseWriter, 
 	json.NewEncoder(w).Encode(resp)
 }
 
-// StartA2AServer starts the A2A protocol server
-func (oa *OrchestrationAgent) StartA2AServer(port int) error {
-	// Create A2A agent card
-	card := &agent.AgentCard{
-		Name:        "statistics-orchestration-agent",
-		Description: "Coordinates research and verification agents to find verified statistics",
-		Skills: []agent.Skill{
-			{
-				Name:        "orchestrate-statistics-search",
-				Description: "Coordinate multi-agent workflow to find and verify statistics",
-				InputMode:   "application/json",
-				OutputMode:  "application/json",
-			},
-		},
-	}
-
-	// Create A2A server
-	srv := server.NewServer(
-		server.WithAgentCard(card),
-		server.WithMessageHandler(oa),
-	)
-
-	addr := fmt.Sprintf(":%d", port)
-	log.Printf("Orchestration Agent starting A2A server on %s", addr)
-	return http.ListenAndServe(addr, srv)
-}
-
-// ProcessMessage implements the A2A MessageHandler interface
-func (oa *OrchestrationAgent) ProcessMessage(ctx context.Context, msg *agent.Message) (*agent.Message, error) {
-	var req models.OrchestrationRequest
-	if err := json.Unmarshal([]byte(msg.Content), &req); err != nil {
-		return nil, fmt.Errorf("invalid message content: %w", err)
-	}
-
-	resp, err := oa.Orchestrate(ctx, &req)
-	if err != nil {
-		return nil, err
-	}
-
-	respData, err := json.Marshal(resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal response: %w", err)
-	}
-
-	return &agent.Message{
-		Content: string(respData),
-		Role:    "assistant",
-	}, nil
-}
-
 func main() {
 	cfg := config.LoadConfig()
-	orchestrationAgent := NewOrchestrationAgent(cfg)
 
-	// Start HTTP server for non-A2A requests
-	go func() {
-		http.HandleFunc("/orchestrate", orchestrationAgent.HandleOrchestrationRequest)
-		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
-		})
-		log.Println("Orchestration Agent HTTP server starting on :8000")
-		if err := http.ListenAndServe(":8000", nil); err != nil {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
+	orchestrationAgent, err := NewOrchestrationAgent(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create orchestration agent: %v", err)
+	}
 
-	// Start A2A server if enabled
-	if cfg.A2AEnabled {
-		if err := orchestrationAgent.StartA2AServer(9000); err != nil {
-			log.Fatalf("A2A server failed: %v", err)
-		}
-	} else {
-		// Keep the program running
-		select {}
+	// Start HTTP server
+	http.HandleFunc("/orchestrate", orchestrationAgent.HandleOrchestrationRequest)
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	log.Println("Orchestration Agent HTTP server starting on :8000")
+	log.Println("(ADK agent initialized for future A2A integration)")
+	if err := http.ListenAndServe(":8000", nil); err != nil {
+		log.Fatalf("HTTP server failed: %v", err)
 	}
 }

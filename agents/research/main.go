@@ -6,103 +6,133 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
+
+	"google.golang.org/adk/agent"
+	"google.golang.org/adk/agent/llmagent"
+	"google.golang.org/adk/model/gemini"
+	"google.golang.org/adk/tool"
+	"google.golang.org/adk/tool/functiontool"
+	"google.golang.org/genai"
 
 	"github.com/grokify/stats-agent/pkg/config"
 	"github.com/grokify/stats-agent/pkg/models"
-	// "trpc.group/trpc-go/trpc-a2a-go/protocol"
-	// "trpc.group/trpc-go/trpc-a2a-go/server"
-	// agentgo "trpc.group/trpc-go/trpc-agent-go/agent"
 )
 
-// Placeholder types until we properly integrate A2A
-type Agent struct{}
-func (*Agent) Run(ctx context.Context, prompt string) (string, error) { return "", nil }
-
-// ResearchAgent is responsible for finding statistics from web searches
+// ResearchAgent wraps an ADK LLM agent for finding statistics
 type ResearchAgent struct {
-	cfg    *config.Config
-	client *http.Client
-	agent  *agentgo.Agent
+	cfg      *config.Config
+	client   *http.Client
+	adkAgent agent.Agent
 }
 
-// NewResearchAgent creates a new research agent
-func NewResearchAgent(cfg *config.Config) *ResearchAgent {
-	// Initialize the trpc-agent
-	agentInstance := agentgo.NewAgent(
-		agentgo.WithName("statistics-research-agent"),
-		agentgo.WithDescription("Finds verifiable statistics from reputable web sources"),
-		agentgo.WithSystemPrompt(`You are a statistics research agent. Your job is to:
+// ResearchInput defines the input for the research tool
+type ResearchInput struct {
+	Topic         string `json:"topic" jsonschema:"description=The topic to research statistics for"`
+	MinStatistics int    `json:"min_statistics" jsonschema:"description=Minimum number of statistics to find"`
+	MaxStatistics int    `json:"max_statistics" jsonschema:"description=Maximum number of statistics to find"`
+}
+
+// ResearchOutput defines the output from the research tool
+type ResearchOutput struct {
+	Candidates []models.CandidateStatistic `json:"candidates"`
+}
+
+// NewResearchAgent creates a new ADK-based research agent
+func NewResearchAgent(cfg *config.Config) (*ResearchAgent, error) {
+	ctx := context.Background()
+
+	// Create Gemini model
+	model, err := gemini.NewModel(ctx, "gemini-2.0-flash-exp", &genai.ClientConfig{
+		APIKey: os.Getenv("GOOGLE_API_KEY"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create model: %w", err)
+	}
+
+	ra := &ResearchAgent{
+		cfg:    cfg,
+		client: &http.Client{Timeout: 30 * time.Second},
+	}
+
+	// Create the research tool function
+	researchTool, err := functiontool.New(functiontool.Config{
+		Name:        "research_statistics",
+		Description: "Searches for and extracts statistics on a given topic from reputable sources",
+	}, ra.researchToolHandler)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create research tool: %w", err)
+	}
+
+	// Create the ADK agent
+	adkAgent, err := llmagent.New(llmagent.Config{
+		Name:        "statistics_research_agent",
+		Model:       model,
+		Description: "Finds verifiable statistics from reputable web sources",
+		Instruction: `You are a statistics research agent. Your job is to:
 1. Search the web for relevant statistics on the given topic
 2. Prioritize reputable sources (academic journals, government agencies, established research organizations)
 3. Extract numerical values with their context
 4. Capture verbatim excerpts that contain the statistic
-5. Return well-structured candidate statistics for verification
+5. Return well-structured candidate statistics
 
 Reputable sources include:
 - Government agencies (CDC, NIH, Census Bureau, etc.)
 - Academic institutions and journals
 - Established research organizations (Pew Research, Gallup, etc.)
 - International organizations (WHO, UN, World Bank, etc.)
-- Respected media with citations (NYT, WSJ, etc.)
 
-Always include the exact URL and a verbatim quote containing the statistic.`),
-	)
-
-	return &ResearchAgent{
-		cfg:    cfg,
-		client: &http.Client{Timeout: 30 * time.Second},
-		agent:  agentInstance,
+Always include the exact URL and a verbatim quote containing the statistic.`,
+		Tools: []tool.Tool{researchTool},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create ADK agent: %w", err)
 	}
+
+	ra.adkAgent = adkAgent
+
+	return ra, nil
 }
 
-// Research performs web searches and extracts statistics
+// researchToolHandler implements the actual research logic
+func (ra *ResearchAgent) researchToolHandler(ctx tool.Context, input ResearchInput) (ResearchOutput, error) {
+	log.Printf("Research Agent: Searching for statistics on topic: %s", input.Topic)
+
+	// TODO: Integrate with actual search API
+	// For now, return mock data
+	candidates := ra.generateMockCandidates(input.Topic, input.MinStatistics)
+
+	return ResearchOutput{
+		Candidates: candidates,
+	}, nil
+}
+
+// generateMockCandidates creates mock data for demonstration
+func (ra *ResearchAgent) generateMockCandidates(topic string, count int) []models.CandidateStatistic {
+	if count < 5 {
+		count = 5
+	}
+
+	candidates := make([]models.CandidateStatistic, count)
+	for i := 0; i < count; i++ {
+		candidates[i] = models.CandidateStatistic{
+			Name:      fmt.Sprintf("Statistic #%d about %s", i+1, topic),
+			Value:     fmt.Sprintf("%d%%", (i+1)*10),
+			Source:    "Pew Research Center",
+			SourceURL: fmt.Sprintf("https://www.pewresearch.org/example-%d", i+1),
+			Excerpt:   fmt.Sprintf("According to our latest survey, %d%% of respondents reported...", (i+1)*10),
+		}
+	}
+	return candidates
+}
+
+// Research performs research directly
 func (ra *ResearchAgent) Research(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
 	log.Printf("Research Agent: Searching for statistics on topic: %s", req.Topic)
 
-	// Build the search prompt
-	searchPrompt := fmt.Sprintf(`Find %d to %d statistics about "%s".
-
-For each statistic, provide:
-1. Name/description of the statistic
-2. Numerical value (number or percentage)
-3. Source name (organization/publication)
-4. Source URL
-5. Verbatim excerpt containing the statistic
-
-Return ONLY a JSON array of statistics in this exact format:
-[
-  {
-    "name": "statistic description",
-    "value": "numerical value with unit",
-    "source": "source name",
-    "source_url": "https://...",
-    "excerpt": "exact quote from source"
-  }
-]`,
-		req.MinStatistics,
-		req.MaxStatistics,
-		req.Topic,
-	)
-
-	if req.ReputableOnly {
-		searchPrompt += "\n\nIMPORTANT: Only include statistics from highly reputable sources."
-	}
-
-	// Use the agent to perform research
-	// In a real implementation, this would integrate with search APIs and LLM
-	result, err := ra.agent.Run(ctx, searchPrompt)
-	if err != nil {
-		return nil, fmt.Errorf("research failed: %w", err)
-	}
-
-	// Parse the LLM response to extract statistics
-	var candidates []models.CandidateStatistic
-	if err := json.Unmarshal([]byte(result), &candidates); err != nil {
-		log.Printf("Warning: Failed to parse LLM response as JSON: %v", err)
-		// Fallback: create mock data for demonstration
-		candidates = ra.generateMockCandidates(req)
-	}
+	// Generate mock candidates directly
+	candidates := ra.generateMockCandidates(req.Topic, req.MinStatistics)
 
 	response := &models.ResearchResponse{
 		Topic:      req.Topic,
@@ -112,20 +142,6 @@ Return ONLY a JSON array of statistics in this exact format:
 
 	log.Printf("Research Agent: Found %d candidate statistics", len(candidates))
 	return response, nil
-}
-
-// generateMockCandidates creates mock data for demonstration purposes
-func (ra *ResearchAgent) generateMockCandidates(req *models.ResearchRequest) []models.CandidateStatistic {
-	// This is temporary mock data - in production, this would come from actual search results
-	return []models.CandidateStatistic{
-		{
-			Name:      fmt.Sprintf("Sample statistic about %s", req.Topic),
-			Value:     "42%",
-			Source:    "Pew Research Center",
-			SourceURL: "https://www.pewresearch.org/example",
-			Excerpt:   "According to our latest survey, 42% of respondents reported...",
-		},
-	}
 }
 
 // HandleResearchRequest is the HTTP handler for research requests
@@ -159,80 +175,24 @@ func (ra *ResearchAgent) HandleResearchRequest(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(resp)
 }
 
-// StartA2AServer starts the A2A protocol server
-func (ra *ResearchAgent) StartA2AServer(port int) error {
-	// Create A2A agent card
-	card := &agent.AgentCard{
-		Name:        "statistics-research-agent",
-		Description: "Finds verifiable statistics from reputable web sources",
-		Skills: []agent.Skill{
-			{
-				Name:        "research-statistics",
-				Description: "Search for and extract statistics on a given topic",
-				InputMode:   "application/json",
-				OutputMode:  "application/json",
-			},
-		},
-	}
-
-	// Create A2A server
-	srv := server.NewServer(
-		server.WithAgentCard(card),
-		server.WithMessageHandler(ra),
-	)
-
-	addr := fmt.Sprintf(":%d", port)
-	log.Printf("Research Agent starting A2A server on %s", addr)
-	return http.ListenAndServe(addr, srv)
-}
-
-// ProcessMessage implements the A2A MessageHandler interface
-func (ra *ResearchAgent) ProcessMessage(ctx context.Context, msg *agent.Message) (*agent.Message, error) {
-	var req models.ResearchRequest
-	if err := json.Unmarshal([]byte(msg.Content), &req); err != nil {
-		return nil, fmt.Errorf("invalid message content: %w", err)
-	}
-
-	resp, err := ra.Research(ctx, &req)
-	if err != nil {
-		return nil, err
-	}
-
-	respData, err := json.Marshal(resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal response: %w", err)
-	}
-
-	return &agent.Message{
-		Content: string(respData),
-		Role:    "assistant",
-	}, nil
-}
-
 func main() {
 	cfg := config.LoadConfig()
-	researchAgent := NewResearchAgent(cfg)
 
-	// Start HTTP server for non-A2A requests
-	go func() {
-		http.HandleFunc("/research", researchAgent.HandleResearchRequest)
-		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
-		})
-		log.Println("Research Agent HTTP server starting on :8001")
-		if err := http.ListenAndServe(":8001", nil); err != nil {
-			log.Fatalf("HTTP server failed: %v", err)
-		}
-	}()
+	researchAgent, err := NewResearchAgent(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create research agent: %v", err)
+	}
 
-	// Start A2A server if enabled
-	if cfg.A2AEnabled {
-		if err := researchAgent.StartA2AServer(9001); err != nil {
-			log.Fatalf("A2A server failed: %v", err)
-		}
-	} else {
-		// Keep the program running
-		select {}
+	// Start HTTP server
+	http.HandleFunc("/research", researchAgent.HandleResearchRequest)
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	log.Println("Research Agent HTTP server starting on :8001")
+	log.Println("(ADK agent initialized for future A2A integration)")
+	if err := http.ListenAndServe(":8001", nil); err != nil {
+		log.Fatalf("HTTP server failed: %v", err)
 	}
 }

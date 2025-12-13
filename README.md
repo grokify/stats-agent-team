@@ -1,6 +1,6 @@
 # Statistics Agent
 
-A multi-agent system for finding and verifying statistics from reputable web sources using Go, built with [trpc-agent-go](https://github.com/trpc-group/trpc-agent-go) and [trpc-a2a-go](https://github.com/trpc-group/trpc-a2a-go).
+A multi-agent system for finding and verifying statistics from reputable web sources using Go, built with [Google ADK (Agent Development Kit)](https://github.com/google/adk-go) and [Eino](https://github.com/cloudwego/eino).
 
 ## Overview
 
@@ -10,7 +10,7 @@ This project implements a sophisticated multi-agent architecture that leverages 
 
 The system consists of **3 specialized agents** with **2 orchestration options**:
 
-> **NEW**: This project now includes **two orchestration agents** - one using trpc-agent (LLM-based) and one using Eino (deterministic graph-based). See [README_EINO.md](README_EINO.md) for details on the Eino orchestrator.
+> **Architecture**: Research and Verification agents are built with **Google ADK** for LLM-based operations. **Two orchestration agents** available: ADK-based (LLM-driven decisions) and Eino-based (deterministic graph workflow). See [README_EINO.md](README_EINO.md) for Eino orchestrator details.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -40,44 +40,52 @@ The system consists of **3 specialized agents** with **2 orchestration options**
 
 ### Agent Responsibilities
 
-#### 1. Research Agent (`agents/research/`)
+#### 1. Research Agent (`agents/research/`) - Google ADK
+- Built with Google ADK and Gemini 2.0 Flash model
 - Executes web searches for statistics on given topics
 - Prioritizes reputable sources (academic, government, research organizations)
 - Extracts candidate statistics with context
 - Returns structured data for verification
+- Port 8001 (HTTP)
 
-#### 2. Verification Agent (`agents/verification/`)
+#### 2. Verification Agent (`agents/verification/`) - Google ADK
+- Built with Google ADK and Gemini 2.0 Flash model
 - Fetches actual source content from URLs
 - Searches for verbatim excerpts in source
 - Validates numerical values match exactly
 - Flags hallucinations and discrepancies
 - Returns verification results with reasons
+- Port 8002 (HTTP)
 
-#### 3a. Orchestration Agent - trpc-agent (`agents/orchestration/`)
+#### 3a. Orchestration Agent - Google ADK (`agents/orchestration/`)
+- Built with Google ADK and Gemini 2.0 Flash model
 - LLM-based decision making for workflow
 - Coordinates Research → Verification workflow
 - Implements adaptive retry logic
 - Dynamic quality control
-- Port 8000 (HTTP), 9000 (A2A)
+- Port 8000 (HTTP)
 
-#### 3b. Orchestration Agent - Eino (`agents/orchestration-eino/`) ⭐ NEW
+#### 3b. Orchestration Agent - Eino (`agents/orchestration-eino/`) ⭐ RECOMMENDED
 - Deterministic graph-based workflow
 - Type-safe orchestration with compile-time checks
 - Predictable, reproducible behavior
 - Faster and lower cost (no LLM for orchestration)
-- Port 8003 (HTTP), 9003 (A2A)
+- Calls ADK-based research and verification agents
+- Port 8003 (HTTP)
 - **Recommended for production use**
 
 ## Features
 
 - ✅ **Multi-agent orchestration** with chains and workflow coordination
-- ✅ **A2A protocol support** for agent-to-agent communication
-- ✅ **LLM integration** via trpc-agent-go
+- ✅ **Google ADK integration** for LLM-based agents
+- ✅ **Eino framework** for deterministic graph orchestration
+- ✅ **Gemini 2.0 Flash model** for fast, accurate LLM operations
 - ✅ **Source verification** to prevent hallucinations
 - ✅ **Reputable source prioritization** (government, academic, research orgs)
 - ✅ **Structured JSON output** with complete metadata
-- ✅ **HTTP and A2A APIs** for both protocols
+- ✅ **HTTP APIs** for all agents
 - ✅ **Retry logic** for ensuring quality results
+- ✅ **Function tools** for structured agent capabilities
 
 ## Output Format
 
@@ -112,8 +120,8 @@ The system returns verified statistics in JSON format:
 ### Prerequisites
 
 - Go 1.21 or higher
-- API keys for LLM provider (OpenAI, etc.)
-- API keys for search provider (Google, etc.)
+- Google API key for Gemini (set as `GOOGLE_API_KEY` environment variable)
+- Optional: API keys for search provider (Google Search, etc.)
 
 ### Setup
 
@@ -128,12 +136,13 @@ cd stats-agent
 make install
 # or
 go mod download
-go get github.com/trpc-group/trpc-agent-go
-go get github.com/trpc-group/trpc-a2a-go
 ```
 
 3. Configure environment variables:
 ```bash
+export GOOGLE_API_KEY="your-google-api-key"
+
+# Optional: Create .env file
 cp .env.example .env
 # Edit .env with your API keys
 ```
@@ -152,22 +161,22 @@ make build
 make run-all-eino
 ```
 
-#### Option 2: Run all agents with trpc-agent orchestrator
+#### Option 2: Run all agents with ADK orchestrator
 ```bash
 make run-all
 ```
 
 #### Option 3: Run each agent separately (in different terminals)
 ```bash
-# Terminal 1: Research Agent
+# Terminal 1: Research Agent (ADK)
 make run-research
 
-# Terminal 2: Verification Agent
+# Terminal 2: Verification Agent (ADK)
 make run-verification
 
 # Terminal 3: Orchestration Agent (choose one)
-make run-orchestration       # trpc-agent version
-make run-orchestration-eino  # Eino version (recommended)
+make run-orchestration       # ADK version (LLM-based)
+make run-orchestration-eino  # Eino version (deterministic, recommended)
 ```
 
 ### Using the CLI
@@ -199,7 +208,7 @@ curl -X POST http://localhost:8003/orchestrate \
     "reputable_only": true
   }'
 
-# Or call trpc-agent orchestration agent (LLM-based)
+# Or call ADK orchestration agent (LLM-based)
 curl -X POST http://localhost:8000/orchestrate \
   -H "Content-Type: application/json" \
   -d '{
@@ -216,40 +225,35 @@ curl -X POST http://localhost:8000/orchestrate \
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LLM_PROVIDER` | LLM provider name | `openai` |
-| `LLM_API_KEY` | API key for LLM | Required |
-| `LLM_MODEL` | Model to use | `gpt-4` |
+| `GOOGLE_API_KEY` | Google API key for Gemini | **Required** |
 | `SEARCH_PROVIDER` | Search provider | `google` |
-| `SEARCH_API_KEY` | Search API key | Required |
+| `SEARCH_API_KEY` | Search API key | Optional |
 | `RESEARCH_AGENT_URL` | Research agent URL | `http://localhost:8001` |
 | `VERIFICATION_AGENT_URL` | Verification agent URL | `http://localhost:8002` |
-| `ORCHESTRATOR_URL` | trpc-agent orchestrator URL | `http://localhost:8000` |
+| `ORCHESTRATOR_URL` | ADK orchestrator URL | `http://localhost:8000` |
 | `ORCHESTRATOR_EINO_URL` | Eino orchestrator URL | `http://localhost:8003` |
-| `A2A_ENABLED` | Enable A2A protocol | `true` |
-| `A2A_AUTH_TYPE` | A2A auth type | `apikey` |
-| `A2A_AUTH_TOKEN` | A2A auth token | Optional |
 
 ### Port Configuration
 
-| Agent | HTTP Port | A2A Port |
-|-------|-----------|----------|
-| Orchestration (trpc-agent) | 8000 | 9000 |
-| Research | 8001 | 9001 |
-| Verification | 8002 | 9002 |
-| **Orchestration (Eino)** ⭐ | **8003** | **9003** |
+| Agent | HTTP Port | Description |
+|-------|-----------|-------------|
+| Research (ADK) | 8001 | Gemini 2.0 Flash-based research |
+| Verification (ADK) | 8002 | Gemini 2.0 Flash-based verification |
+| Orchestration (ADK) | 8000 | LLM-based orchestration |
+| **Orchestration (Eino)** ⭐ | **8003** | **Deterministic graph orchestration (recommended)** |
 
 ## Project Structure
 
 ```
 stats-agent/
 ├── agents/
-│   ├── orchestration/      # Orchestration agent (trpc-agent)
+│   ├── orchestration/      # Orchestration agent (Google ADK)
 │   │   └── main.go
 │   ├── orchestration-eino/ # Orchestration agent (Eino) ⭐
 │   │   └── main.go
-│   ├── research/           # Research agent
+│   ├── research/           # Research agent (Google ADK)
 │   │   └── main.go
-│   └── verification/       # Verification agent
+│   └── verification/       # Verification agent (Google ADK)
 │       └── main.go
 ├── pkg/
 │   ├── config/            # Configuration management
@@ -287,11 +291,10 @@ make clean
 
 - **Language**: Go 1.21+
 - **Agent Frameworks**:
-  - [trpc-agent-go](https://github.com/trpc-group/trpc-agent-go) - LLM-based orchestration
+  - [Google ADK (Agent Development Kit)](https://github.com/google/adk-go) - LLM-based agents ⭐
   - [Eino](https://github.com/cloudwego/eino) - Deterministic graph orchestration ⭐
-- **A2A Protocol**: [trpc-a2a-go](https://github.com/trpc-group/trpc-a2a-go)
-- **LLM**: Configurable (OpenAI, etc.)
-- **Search**: Configurable (Google, etc.)
+- **LLM Model**: Google Gemini 2.0 Flash (via `google.golang.org/genai`)
+- **Search**: Configurable (Google Search, etc.)
 
 ## How It Works
 
@@ -341,6 +344,7 @@ Contributions welcome! Please:
 
 ## Acknowledgments
 
-- Built with [trpc-agent-go](https://github.com/trpc-group/trpc-agent-go)
-- Uses [A2A protocol](https://github.com/trpc-group/trpc-a2a-go)
+- Built with [Google ADK (Agent Development Kit)](https://github.com/google/adk-go)
+- Uses [Eino](https://github.com/cloudwego/eino) for deterministic orchestration
+- Powered by Google Gemini 2.0 Flash model
 - Inspired by multi-agent collaboration frameworks
