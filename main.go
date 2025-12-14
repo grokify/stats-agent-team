@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/grokify/stats-agent/pkg/config"
-	"github.com/grokify/stats-agent/pkg/models"
+	"github.com/grokify/stats-agent-team/pkg/config"
+	"github.com/grokify/stats-agent-team/pkg/models"
 )
 
 func main() {

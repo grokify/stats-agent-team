@@ -1,4 +1,4 @@
-module github.com/grokify/stats-agent
+module github.com/grokify/stats-agent-team
 
 go 1.25.3
 

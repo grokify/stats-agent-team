@@ -18,8 +18,8 @@ import (
 	"google.golang.org/adk/tool/functiontool"
 	"google.golang.org/genai"
 
-	"github.com/grokify/stats-agent/pkg/config"
-	"github.com/grokify/stats-agent/pkg/models"
+	"github.com/grokify/stats-agent-team/pkg/config"
+	"github.com/grokify/stats-agent-team/pkg/models"
 )
 
 // VerificationAgent uses ADK for validating statistics

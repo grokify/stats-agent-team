@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/cloudwego/eino/compose"
-	"github.com/grokify/stats-agent/pkg/config"
-	"github.com/grokify/stats-agent/pkg/models"
+	"github.com/grokify/stats-agent-team/pkg/config"
+	"github.com/grokify/stats-agent-team/pkg/models"
 )
 
 // EinoOrchestrationAgent uses Eino framework for deterministic orchestration
