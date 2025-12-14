@@ -144,7 +144,7 @@ func (oa *OrchestrationAgent) orchestrate(ctx context.Context, req *models.Orche
 			candidatesNeeded = candidatesLeft
 		}
 
-		// Step 1: Request statistics from research agent
+		// Step 1: Request sources from research agent
 		researchReq := &models.ResearchRequest{
 			Topic:         req.Topic,
 			MinStatistics: candidatesNeeded,
@@ -152,7 +152,7 @@ func (oa *OrchestrationAgent) orchestrate(ctx context.Context, req *models.Orche
 			ReputableOnly: req.ReputableOnly,
 		}
 
-		log.Printf("Orchestration: Requesting %d candidates from research agent (attempt %d/%d)",
+		log.Printf("Orchestration: Requesting %d sources from research agent (attempt %d/%d)",
 			candidatesNeeded, retry+1, maxRetries)
 
 		researchResp, err := oa.callResearchAgent(ctx, researchReq)
@@ -162,12 +162,42 @@ func (oa *OrchestrationAgent) orchestrate(ctx context.Context, req *models.Orche
 			continue
 		}
 
-		log.Printf("Orchestration: Received %d candidates from research agent", len(researchResp.Candidates))
-		allCandidates = append(allCandidates, researchResp.Candidates...)
+		// Convert candidates to search results (research agent returns placeholder candidates now)
+		searchResults := make([]models.SearchResult, 0, len(researchResp.Candidates))
+		for _, cand := range researchResp.Candidates {
+			searchResults = append(searchResults, models.SearchResult{
+				URL:     cand.SourceURL,
+				Title:   cand.Name,
+				Snippet: cand.Excerpt,
+				Domain:  cand.Source,
+			})
+		}
 
-		// Step 2: Send candidates to verification agent
+		log.Printf("Orchestration: Received %d sources from research agent", len(searchResults))
+
+		// Step 2: Send sources to synthesis agent to extract statistics
+		synthesisReq := &models.SynthesisRequest{
+			Topic:         req.Topic,
+			SearchResults: searchResults,
+			MinStatistics: candidatesNeeded,
+			MaxStatistics: candidatesNeeded + 5,
+		}
+
+		log.Printf("Orchestration: Sending %d sources to synthesis agent", len(searchResults))
+
+		synthesisResp, err := oa.callSynthesisAgent(ctx, synthesisReq)
+		if err != nil {
+			log.Printf("Synthesis agent failed: %v", err)
+			retry++
+			continue
+		}
+
+		log.Printf("Orchestration: Synthesis extracted %d candidates", len(synthesisResp.Candidates))
+		allCandidates = append(allCandidates, synthesisResp.Candidates...)
+
+		// Step 3: Send candidates to verification agent
 		verifyReq := &models.VerificationRequest{
-			Candidates: researchResp.Candidates,
+			Candidates: synthesisResp.Candidates,
 		}
 
 		log.Printf("Orchestration: Sending %d candidates to verification agent", len(verifyReq.Candidates))
@@ -229,6 +259,16 @@ func (oa *OrchestrationAgent) orchestrate(ctx context.Context, req *models.Orche
 func (oa *OrchestrationAgent) callResearchAgent(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
 	var resp models.ResearchResponse
 	url := fmt.Sprintf("%s/research", oa.cfg.ResearchAgentURL)
+	if err := httpclient.PostJSON(ctx, oa.client, url, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// callSynthesisAgent calls the synthesis agent via HTTP
+func (oa *OrchestrationAgent) callSynthesisAgent(ctx context.Context, req *models.SynthesisRequest) (*models.SynthesisResponse, error) {
+	var resp models.SynthesisResponse
+	url := fmt.Sprintf("%s/synthesize", oa.cfg.SynthesisAgentURL)
 	if err := httpclient.PostJSON(ctx, oa.client, url, req, &resp); err != nil {
 		return nil, err
 	}

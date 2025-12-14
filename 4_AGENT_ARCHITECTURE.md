@@ -233,36 +233,40 @@ type SynthesisResponse struct {
 4. **Configuration Updated** (`pkg/config/config.go`)
    - Added SynthesisAgentURL (port 8004)
 
-### 🚧 In Progress
+### ✅ Completed (Updated)
 
-1. **Orchestration Update** - Need to update to call all 4 agents
+1. **Orchestration Update** - Both Eino and ADK orchestration updated for 4-agent workflow
+   - **Eino Orchestration** (`pkg/orchestration/eino.go`) ✅
+     - Added synthesis agent call between research and verification
+     - Updated workflow graph with nodeSynthesis
+     - Added SynthesisState type
+     - Added callSynthesisAgent() helper method
+
+   - **ADK Orchestration** (`agents/orchestration/main.go`) ✅
+     - Added HTTP client for synthesis agent
+     - Updated orchestrate() method to call all 4 agents in sequence
+     - Added callSynthesisAgent() helper method
+
+2. **Docker Configuration** ✅
+   - Added synthesis agent to Dockerfile (build and copy binary)
+   - Updated docker-compose.yml with port 8004
+   - Added synthesis agent to docker-entrypoint.sh (startup and shutdown)
+   - Exposed all 4 ports: 8001, 8002, 8003, 8004
+
+3. **Makefile Updates** ✅
+   - Added `run-synthesis` target
+   - Updated `run-all` to include synthesis agent
+   - Updated `run-all-eino` to include synthesis agent
+   - Updated `build` target to build synthesis binary
 
 ### ⏳ TODO
 
-1. **Eino Orchestration** (`pkg/orchestration/eino.go`)
-   - Add synthesis agent call between research and verification
-   - Update workflow graph
-
-2. **ADK Orchestration** (`agents/orchestration/main.go`)
-   - Add HTTP client for synthesis agent
-   - Update orchestrate() method
-
-3. **Docker Configuration**
-   - Add synthesis agent to Dockerfile
-   - Update docker-compose.yml with port 8004
-   - Add to docker-entrypoint.sh
-
-4. **Makefile Updates**
-   - Add `run-synthesis` target
-   - Update `run-all-eino` to include synthesis
-   - Update `build` target
-
-5. **Documentation Updates**
+1. **Documentation Updates**
    - README.md - Update architecture diagram
    - DOCKER.md - Add synthesis agent info
-   - Architecture documentation
+   - Update API examples to show 4-agent workflow
 
-6. **LLM Integration in Synthesis** (Future Enhancement)
+2. **LLM Integration in Synthesis** (Future Enhancement)
    - Replace regex with full LLM analysis
    - Use ADK to intelligently parse content
    - Extract context and validate statistics

@@ -1,4 +1,4 @@
-.PHONY: help build build-mcp docker-build docker-up docker-down docker-logs run-research run-verification run-orchestration run-orchestration-eino run-all run-all-eino run-mcp clean install test
+.PHONY: help build build-mcp docker-build docker-up docker-down docker-logs run-research run-synthesis run-verification run-orchestration run-orchestration-eino run-all run-all-eino run-mcp clean install test
 
 help:
 	@echo "Statistics Agent - Make targets"
@@ -16,6 +16,7 @@ help:
 	@echo ""
 	@echo "Run Commands (Local):"
 	@echo "  make run-research            Run research agent"
+	@echo "  make run-synthesis           Run synthesis agent"
 	@echo "  make run-verification        Run verification agent"
 	@echo "  make run-orchestration       Run trpc-agent orchestration"
 	@echo "  make run-orchestration-eino  Run Eino orchestration"
@@ -36,6 +37,7 @@ install:
 build:
 	@echo "Building agents..."
 	go build -o bin/research agents/research/main.go
+	go build -o bin/synthesis agents/synthesis/main.go
 	go build -o bin/verification agents/verification/main.go
 	go build -o bin/orchestration agents/orchestration/main.go
 	go build -o bin/orchestration-eino agents/orchestration-eino/main.go
@@ -69,6 +71,10 @@ run-research:
 	@echo "Starting Research Agent on :8001 (HTTP) and :9001 (A2A)..."
 	go run agents/research/main.go
 
+run-synthesis:
+	@echo "Starting Synthesis Agent on :8004..."
+	go run agents/synthesis/main.go
+
 run-verification:
 	@echo "Starting Verification Agent on :8002 (HTTP) and :9002 (A2A)..."
 	go run agents/verification/main.go
@@ -84,9 +90,11 @@ run-orchestration-eino:
 run-all:
 	@echo "Starting all agents with trpc-agent orchestrator..."
 	@echo "Research Agent: http://localhost:8001 (A2A: 9001)"
+	@echo "Synthesis Agent: http://localhost:8004"
 	@echo "Verification Agent: http://localhost:8002 (A2A: 9002)"
 	@echo "Orchestration Agent (trpc-agent): http://localhost:8000 (A2A: 9000)"
 	@go run agents/research/main.go & \
+	go run agents/synthesis/main.go & \
 	go run agents/verification/main.go & \
 	go run agents/orchestration/main.go & \
 	wait
@@ -94,9 +102,11 @@ run-all:
 run-all-eino:
 	@echo "Starting all agents with Eino orchestrator..."
 	@echo "Research Agent: http://localhost:8001 (A2A: 9001)"
+	@echo "Synthesis Agent: http://localhost:8004"
 	@echo "Verification Agent: http://localhost:8002 (A2A: 9002)"
 	@echo "Orchestration Agent (Eino): http://localhost:8003 (A2A: 9003)"
 	@go run agents/research/main.go & \
+	go run agents/synthesis/main.go & \
 	go run agents/verification/main.go & \
 	go run agents/orchestration-eino/main.go & \
 	wait

@@ -11,6 +11,7 @@ services:
       - "8001:8001"  # Research Agent
       - "8002:8002"  # Verification Agent
       - "8003:8003"  # Eino Orchestration Agent
+      - "8004:8004"  # Synthesis Agent
     environment:
       # LLM Provider Configuration
       - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
@@ -32,6 +33,7 @@ services:
 
       # Agent URLs (internal communication)
       - RESEARCH_AGENT_URL=http://localhost:8001
+      - SYNTHESIS_AGENT_URL=http://localhost:8004
       - VERIFICATION_AGENT_URL=http://localhost:8002
 
       # Model Configuration (optional overrides)

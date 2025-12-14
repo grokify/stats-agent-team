@@ -6,10 +6,11 @@ This guide explains how to run the Statistics Agent Team using Docker.
 
 ## Overview
 
-The Docker setup runs all three agents in a single container:
-- **Research Agent** (port 8001): Finds statistics on topics
+The Docker setup runs all **four agents** in a single container:
+- **Research Agent** (port 8001): Web search for source URLs
+- **Synthesis Agent** (port 8004): Extract statistics from URLs using LLM ⭐ NEW
 - **Verification Agent** (port 8002): Verifies statistics from sources
-- **Eino Orchestration Agent** (port 8003): Coordinates the workflow
+- **Eino Orchestration Agent** (port 8003): Coordinates the 4-agent workflow
 
 ## Quick Start
 
@@ -93,8 +94,11 @@ docker run -d \
   -p 8001:8001 \
   -p 8002:8002 \
   -p 8003:8003 \
+  -p 8004:8004 \
   -e LLM_PROVIDER=gemini \
   -e GEMINI_API_KEY=your_api_key_here \
+  -e SEARCH_PROVIDER=serper \
+  -e SERPER_API_KEY=your_serper_key_here \
   stats-agent-team
 ```
 
@@ -116,15 +120,19 @@ docker rm stats-agent-eino
 Once running, the following endpoints are available:
 
 ### Research Agent (Port 8001)
-- `POST http://localhost:8001/research` - Find statistics
+- `POST http://localhost:8001/research` - Web search for source URLs
 - `GET http://localhost:8001/health` - Health check
+
+### Synthesis Agent (Port 8004) ⭐ NEW
+- `POST http://localhost:8004/synthesize` - Extract statistics from URLs
+- `GET http://localhost:8004/health` - Health check
 
 ### Verification Agent (Port 8002)
 - `POST http://localhost:8002/verify` - Verify statistics
 - `GET http://localhost:8002/health` - Health check
 
 ### Orchestration Agent (Port 8003)
-- `POST http://localhost:8003/orchestrate` - Full workflow
+- `POST http://localhost:8003/orchestrate` - Full 4-agent workflow
 - `GET http://localhost:8003/health` - Health check
 
 **Note:** While all agents are exposed for testing and troubleshooting, typical usage only requires calling the orchestration endpoint.

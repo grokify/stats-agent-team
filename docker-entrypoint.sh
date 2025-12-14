@@ -7,12 +7,18 @@ echo ""
 echo "Research Agent:        http://localhost:8001"
 echo "Verification Agent:    http://localhost:8002"
 echo "Orchestration (Eino):  http://localhost:8003"
+echo "Synthesis Agent:       http://localhost:8004"
 echo ""
 
 # Start research agent in background
 echo "Starting Research Agent on :8001..."
 /app/research &
 RESEARCH_PID=$!
+
+# Start synthesis agent in background
+echo "Starting Synthesis Agent on :8004..."
+/app/synthesis &
+SYNTHESIS_PID=$!
 
 # Start verification agent in background
 echo "Starting Verification Agent on :8002..."
@@ -36,8 +42,8 @@ echo ""
 shutdown() {
     echo ""
     echo "Shutting down agents..."
-    kill -TERM $RESEARCH_PID $VERIFICATION_PID $ORCHESTRATION_PID 2>/dev/null || true
-    wait $RESEARCH_PID $VERIFICATION_PID $ORCHESTRATION_PID 2>/dev/null || true
+    kill -TERM $RESEARCH_PID $SYNTHESIS_PID $VERIFICATION_PID $ORCHESTRATION_PID 2>/dev/null || true
+    wait $RESEARCH_PID $SYNTHESIS_PID $VERIFICATION_PID $ORCHESTRATION_PID 2>/dev/null || true
     echo "All agents stopped."
     exit 0
 }
@@ -46,4 +52,4 @@ shutdown() {
 trap shutdown SIGTERM SIGINT
 
 # Wait for all background processes
-wait $RESEARCH_PID $VERIFICATION_PID $ORCHESTRATION_PID
+wait $RESEARCH_PID $SYNTHESIS_PID $VERIFICATION_PID $ORCHESTRATION_PID

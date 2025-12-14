@@ -14,9 +14,9 @@ This project implements a sophisticated multi-agent architecture that leverages 
 
 ## Architecture
 
-The system consists of **3 specialized agents** with **2 orchestration options**:
+The system implements a **4-agent architecture** with clear separation of concerns:
 
-> **Architecture**: Research and Verification agents are built with **Google ADK** for LLM-based operations. **Two orchestration agents** available: ADK-based (LLM-driven decisions) and Eino-based (deterministic graph workflow). See [README_EINO.md](README_EINO.md) for Eino orchestrator details.
+> **Architecture**: Built with **Google ADK** for LLM-based operations. **Two orchestration options** available: ADK-based (LLM-driven decisions) and Eino-based (deterministic graph workflow). See [4_AGENT_ARCHITECTURE.md](4_AGENT_ARCHITECTURE.md) for complete details.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -27,57 +27,70 @@ The system consists of **3 specialized agents** with **2 orchestration options**
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │            ORCHESTRATION AGENT                          │
-│            (Port 8000 / 9000)                           │
-│  • Coordinates workflow                                 │
+│         (Port 8000 ADK / 8003 Eino)                     │
+│  • Coordinates 4-agent workflow                         │
 │  • Manages retry logic                                  │
 │  • Ensures quality standards                            │
-└──────────┬──────────────────────────┬───────────────────┘
-           │                          │
-           ▼                          ▼
-┌──────────────────────┐    ┌─────────────────────────────┐
-│  RESEARCH AGENT      │    │  VERIFICATION AGENT         │
-│  (Port 8001 / 9001)  │    │  (Port 8002 / 9002)         │
-│                      │    │                             │
-│  • Web searches      │───▶│  • Fetches source URLs      │
-│  • Finds candidates  │    │  • Validates excerpts       │
-│  • Extracts stats    │    │  • Checks numerical values  │
-└──────────────────────┘    └─────────────────────────────┘
+└───┬──────────────┬──────────────┬──────────────────────┘
+    │              │              │
+    ▼              ▼              ▼
+┌────────────┐ ┌──────────┐ ┌─────────────────┐
+│  RESEARCH  │ │SYNTHESIS │ │  VERIFICATION   │
+│   AGENT    │ │  AGENT   │ │     AGENT       │
+│ Port 8001  │ │Port 8004 │ │   Port 8002     │
+│            │ │          │ │                 │
+│ • Search   │─│• Fetch   │─│• Re-fetch URLs  │
+│   Serper   │ │  URLs    │ │• Validate text  │
+│ • Filter   │ │• LLM     │ │• Check numbers  │
+│   Sources  │ │  Extract │ │• Flag errors    │
+└────────────┘ └──────────┘ └─────────────────┘
+     │              │              │
+     ▼              ▼              ▼
+  URLs only    Statistics     Verified Stats
 ```
 
 ### Agent Responsibilities
 
-#### 1. Research Agent (`agents/research/`) - Google ADK
-- Built with Google ADK and Gemini 2.0 Flash model
-- Executes web searches for statistics on given topics
-- Prioritizes reputable sources (academic, government, research organizations)
-- Extracts candidate statistics with context
-- Returns structured data for verification
-- Port 8001 (HTTP)
+#### 1. Research Agent (`agents/research/`) - Web Search Only
+- **No LLM required** - Pure search functionality
+- Web search via Serper/SerpAPI integration
+- Returns URLs with metadata (title, snippet, domain)
+- Prioritizes reputable sources (`.gov`, `.edu`, research orgs)
+- Output: List of `SearchResult` objects
+- Port: **8001**
 
-#### 2. Verification Agent (`agents/verification/`) - Google ADK
-- Built with Google ADK and Gemini 2.0 Flash model
-- Fetches actual source content from URLs
-- Searches for verbatim excerpts in source
+#### 2. Synthesis Agent (`agents/synthesis/`) - Google ADK ⭐ NEW
+- **LLM-heavy** extraction agent
+- Built with Google ADK and LLM (Gemini/Claude/OpenAI/Ollama)
+- Fetches webpage content from URLs
+- Extracts numerical statistics using LLM analysis
+- Finds verbatim excerpts containing statistics
+- Creates `CandidateStatistic` objects with proper metadata
+- Port: **8004**
+
+#### 3. Verification Agent (`agents/verification/`) - Google ADK
+- **LLM-light** validation agent
+- Re-fetches source URLs to verify content
+- Checks excerpts exist verbatim in source
 - Validates numerical values match exactly
 - Flags hallucinations and discrepancies
-- Returns verification results with reasons
-- Port 8002 (HTTP)
+- Returns verification results with pass/fail reasons
+- Port: **8002**
 
-#### 3a. Orchestration Agent - Google ADK (`agents/orchestration/`)
-- Built with Google ADK and Gemini 2.0 Flash model
-- LLM-based decision making for workflow
-- Coordinates Research → Verification workflow
+#### 4a. Orchestration Agent - Google ADK (`agents/orchestration/`)
+- Built with Google ADK for LLM-driven workflow decisions
+- Coordinates: Research → Synthesis → Verification
 - Implements adaptive retry logic
 - Dynamic quality control
-- Port 8000 (HTTP)
+- Port: **8000**
 
-#### 3b. Orchestration Agent - Eino (`agents/orchestration-eino/`) ⭐ RECOMMENDED
-- Deterministic graph-based workflow
-- Type-safe orchestration with compile-time checks
+#### 4b. Orchestration Agent - Eino (`agents/orchestration-eino/`) ⭐ RECOMMENDED
+- **Deterministic graph-based workflow** (no LLM for orchestration)
+- Type-safe orchestration with Eino framework
 - Predictable, reproducible behavior
-- Faster and lower cost (no LLM for orchestration)
-- Calls ADK-based research and verification agents
-- Port 8003 (HTTP)
+- Faster and lower cost
+- Workflow: ValidateInput → Research → Synthesis → Verification → QualityCheck → Format
+- Port: **8003**
 - **Recommended for production use**
 
 ## Features

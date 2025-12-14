@@ -44,6 +44,7 @@ func (oa *EinoOrchestrationAgent) buildWorkflowGraph() *compose.Graph[*models.Or
 	const (
 		nodeValidateInput  = "validate_input"
 		nodeResearch       = "research"
+		nodeSynthesis      = "synthesis"
 		nodeVerification   = "verification"
 		nodeCheckQuality   = "check_quality"
 		nodeRetryResearch  = "retry_research"
@@ -70,7 +71,7 @@ func (oa *EinoOrchestrationAgent) buildWorkflowGraph() *compose.Graph[*models.Or
 		log.Printf("[Eino] Warning: failed to add validate input node: %v", err)
 	}
 
-	// 2. Research Node - calls research agent
+	// 2. Research Node - calls research agent to find sources (URLs)
 	researchLambda := compose.InvokableLambda(func(ctx context.Context, req *models.OrchestrationRequest) (*ResearchState, error) {
 		log.Printf("[Eino] Executing research for topic: %s", req.Topic)
 
@@ -86,17 +87,58 @@ func (oa *EinoOrchestrationAgent) buildWorkflowGraph() *compose.Graph[*models.Or
 			return nil, fmt.Errorf("research failed: %w", err)
 		}
 
+		// Convert candidates to search results
+		searchResults := make([]models.SearchResult, 0, len(resp.Candidates))
+		for _, cand := range resp.Candidates {
+			searchResults = append(searchResults, models.SearchResult{
+				URL:     cand.SourceURL,
+				Title:   cand.Name,
+				Snippet: cand.Excerpt,
+				Domain:  cand.Source,
+			})
+		}
+
+		log.Printf("[Eino] Research found %d sources", len(searchResults))
+
 		return &ResearchState{
-			Request:    req,
-			Candidates: resp.Candidates,
+			Request:       req,
+			SearchResults: searchResults,
 		}, nil
 	})
 	if err := g.AddLambdaNode(nodeResearch, researchLambda); err != nil {
 		log.Printf("[Eino] Warning: failed to add research node: %v", err)
 	}
 
-	// 3. Verification Node - calls verification agent
-	verificationLambda := compose.InvokableLambda(func(ctx context.Context, state *ResearchState) (*VerificationState, error) {
+	// 3. Synthesis Node - calls synthesis agent to extract statistics
+	synthesisLambda := compose.InvokableLambda(func(ctx context.Context, state *ResearchState) (*SynthesisState, error) {
+		log.Printf("[Eino] Synthesizing statistics from %d sources", len(state.SearchResults))
+
+		synthesisReq := &models.SynthesisRequest{
+			Topic:         state.Request.Topic,
+			SearchResults: state.SearchResults,
+			MinStatistics: state.Request.MinVerifiedStats,
+			MaxStatistics: state.Request.MaxCandidates,
+		}
+
+		resp, err := oa.callSynthesisAgent(ctx, synthesisReq)
+		if err != nil {
+			return nil, fmt.Errorf("synthesis failed: %w", err)
+		}
+
+		log.Printf("[Eino] Synthesis extracted %d candidate statistics", len(resp.Candidates))
+
+		return &SynthesisState{
+			Request:       state.Request,
+			SearchResults: state.SearchResults,
+			Candidates:    resp.Candidates,
+		}, nil
+	})
+	if err := g.AddLambdaNode(nodeSynthesis, synthesisLambda); err != nil {
+		log.Printf("[Eino] Warning: failed to add synthesis node: %v", err)
+	}
+
+	// 4. Verification Node - calls verification agent
+	verificationLambda := compose.InvokableLambda(func(ctx context.Context, state *SynthesisState) (*VerificationState, error) {
 		log.Printf("[Eino] Verifying %d candidates", len(state.Candidates))
 
 		verifyReq := &models.VerificationRequest{
@@ -127,7 +169,7 @@ func (oa *EinoOrchestrationAgent) buildWorkflowGraph() *compose.Graph[*models.Or
 		log.Printf("[Eino] Warning: failed to add verification node: %v", err)
 	}
 
-	// 4. Quality Check Node - deterministic decision
+	// 5. Quality Check Node - deterministic decision
 	qualityCheckLambda := compose.InvokableLambda(func(ctx context.Context, state *VerificationState) (*QualityDecision, error) {
 		verified := len(state.Verified)
 		target := state.Request.MinVerifiedStats
@@ -152,49 +194,26 @@ func (oa *EinoOrchestrationAgent) buildWorkflowGraph() *compose.Graph[*models.Or
 		log.Printf("[Eino] Warning: failed to add quality check node: %v", err)
 	}
 
-	// 5. Retry Research Node (if needed)
-	retryResearchLambda := compose.InvokableLambda(func(ctx context.Context, decision *QualityDecision) (*ResearchState, error) {
+	// 6. Retry Research Node (if needed) - NOT IMPLEMENTED YET in 4-agent architecture
+	// TODO: Implement retry logic for 4-agent workflow
+	retryResearchLambda := compose.InvokableLambda(func(ctx context.Context, decision *QualityDecision) (*VerificationState, error) {
 		if !decision.NeedMore {
 			// No retry needed, return existing state
-			return &ResearchState{
-				Request:    decision.State.Request,
-				Candidates: decision.State.AllCandidates,
-			}, nil
+			return decision.State, nil
 		}
 
-		log.Printf("[Eino] Retrying research for %d more candidates", decision.Shortfall)
+		log.Printf("[Eino] Retry logic not yet implemented for 4-agent architecture")
+		log.Printf("[Eino] Would retry for %d more candidates", decision.Shortfall)
 
-		// Request more candidates
-		researchReq := &models.ResearchRequest{
-			Topic:         decision.State.Request.Topic,
-			MinStatistics: decision.Shortfall + 5, // buffer
-			MaxStatistics: decision.Shortfall + 10,
-			ReputableOnly: decision.State.Request.ReputableOnly,
-		}
-
-		resp, err := oa.callResearchAgent(ctx, researchReq)
-		if err != nil {
-			log.Printf("[Eino] Retry research failed: %v", err)
-			// Return existing state on failure
-			return &ResearchState{
-				Request:    decision.State.Request,
-				Candidates: decision.State.AllCandidates,
-			}, nil
-		}
-
-		// Combine with existing candidates
-		allCandidates := append(decision.State.AllCandidates, resp.Candidates...)
-
-		return &ResearchState{
-			Request:    decision.State.Request,
-			Candidates: allCandidates,
-		}, nil
+		// For now, just return the existing state
+		// TODO: Implement: Research → Synthesis → Verification loop
+		return decision.State, nil
 	})
 	if err := g.AddLambdaNode(nodeRetryResearch, retryResearchLambda); err != nil {
 		log.Printf("[Eino] Warning: failed to add retry research node: %v", err)
 	}
 
-	// 6. Format Response Node
+	// 7. Format Response Node
 	formatResponseLambda := compose.InvokableLambda(func(ctx context.Context, state *VerificationState) (*models.OrchestrationResponse, error) {
 		log.Printf("[Eino] Formatting response with %d verified statistics", len(state.Verified))
 
@@ -214,13 +233,16 @@ func (oa *EinoOrchestrationAgent) buildWorkflowGraph() *compose.Graph[*models.Or
 	// Add edges to define the workflow
 	_ = g.AddEdge(compose.START, nodeValidateInput)
 	_ = g.AddEdge(nodeValidateInput, nodeResearch)
-	_ = g.AddEdge(nodeResearch, nodeVerification)
+	_ = g.AddEdge(nodeResearch, nodeSynthesis)      // NEW: Research → Synthesis
+	_ = g.AddEdge(nodeSynthesis, nodeVerification)  // NEW: Synthesis → Verification
 	_ = g.AddEdge(nodeVerification, nodeCheckQuality)
 
 	// Conditional branching based on quality check
 	_ = g.AddEdge(nodeCheckQuality, nodeRetryResearch)
 	_ = g.AddEdge(nodeRetryResearch, nodeFormatResponse)
 	_ = g.AddEdge(nodeFormatResponse, compose.END)
+
+	log.Printf("[Eino] Workflow graph built: ValidateInput → Research → Synthesis → Verification → QualityCheck → Format")
 
 	return g
 }
@@ -250,6 +272,15 @@ func (oa *EinoOrchestrationAgent) Orchestrate(ctx context.Context, req *models.O
 func (oa *EinoOrchestrationAgent) callResearchAgent(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
 	var resp models.ResearchResponse
 	url := fmt.Sprintf("%s/research", oa.cfg.ResearchAgentURL)
+	if err := httpclient.PostJSON(ctx, oa.client, url, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (oa *EinoOrchestrationAgent) callSynthesisAgent(ctx context.Context, req *models.SynthesisRequest) (*models.SynthesisResponse, error) {
+	var resp models.SynthesisResponse
+	url := fmt.Sprintf("%s/synthesize", oa.cfg.SynthesisAgentURL)
 	if err := httpclient.PostJSON(ctx, oa.client, url, req, &resp); err != nil {
 		return nil, err
 	}
@@ -292,8 +323,14 @@ func (oa *EinoOrchestrationAgent) HandleOrchestrationRequest(w http.ResponseWrit
 
 // State types for the workflow
 type ResearchState struct {
-	Request    *models.OrchestrationRequest
-	Candidates []models.CandidateStatistic
+	Request       *models.OrchestrationRequest
+	SearchResults []models.SearchResult
+}
+
+type SynthesisState struct {
+	Request       *models.OrchestrationRequest
+	SearchResults []models.SearchResult
+	Candidates    []models.CandidateStatistic
 }
 
 type VerificationState struct {
