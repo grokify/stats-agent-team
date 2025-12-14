@@ -238,19 +238,25 @@ JSON output:`, topic, result.URL, result.Domain, content)
 	return candidates, nil
 }
 
-// extractJSONFromMarkdown removes markdown code fences from LLM response
+// extractJSONFromMarkdown removes markdown code fences and extra text from LLM response
 func extractJSONFromMarkdown(response string) string {
-	// Remove ```json and ``` markers
 	response = strings.TrimSpace(response)
-	if strings.HasPrefix(response, "```json") {
-		response = strings.TrimPrefix(response, "```json")
-	} else if strings.HasPrefix(response, "```") {
-		response = strings.TrimPrefix(response, "```")
+
+	// Try to find JSON array in the response
+	startIdx := strings.Index(response, "[")
+	if startIdx == -1 {
+		return response // No array found, return as-is
 	}
-	if strings.HasSuffix(response, "```") {
-		response = strings.TrimSuffix(response, "```")
+
+	// Find the matching closing bracket
+	endIdx := strings.LastIndex(response, "]")
+	if endIdx == -1 || endIdx < startIdx {
+		return response // No valid closing bracket
 	}
-	return strings.TrimSpace(response)
+
+	// Extract just the JSON array
+	jsonStr := response[startIdx : endIdx+1]
+	return strings.TrimSpace(jsonStr)
 }
 
 // Synthesize processes a synthesis request directly
