@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # All-in-one container with Eino orchestration
+  stats-agent-eino:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stats-agent-eino
+    ports:
+      - "8001:8001"  # Research Agent
+      - "8002:8002"  # Verification Agent
+      - "8003:8003"  # Eino Orchestration Agent
+    environment:
+      # LLM Provider Configuration
+      - LLM_PROVIDER=${LLM_PROVIDER:-gemini}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+
+      # API Keys
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # Ollama Configuration
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+
+      # Agent URLs (internal communication)
+      - RESEARCH_AGENT_URL=http://localhost:8001
+      - VERIFICATION_AGENT_URL=http://localhost:8002
+
+      # Model Configuration (optional overrides)
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash-exp}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-3-5-sonnet-20241022}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama2}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - stats-agent-network
+
+networks:
+  stats-agent-network:
+    driver: bridge

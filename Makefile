@@ -1,11 +1,20 @@
-.PHONY: help build build-mcp run-research run-verification run-orchestration run-orchestration-eino run-all run-all-eino run-mcp clean install
+.PHONY: help build build-mcp docker-build docker-up docker-down docker-logs run-research run-verification run-orchestration run-orchestration-eino run-all run-all-eino run-mcp clean install test
 
 help:
 	@echo "Statistics Agent - Make targets"
 	@echo ""
+	@echo "Docker Commands:"
+	@echo "  make docker-build            Build Docker image"
+	@echo "  make docker-up               Start all agents with Docker Compose"
+	@echo "  make docker-down             Stop all agents"
+	@echo "  make docker-logs             View Docker logs"
+	@echo ""
+	@echo "Build Commands:"
 	@echo "  make install                 Install dependencies"
 	@echo "  make build                   Build all agents"
 	@echo "  make build-mcp               Build MCP server"
+	@echo ""
+	@echo "Run Commands (Local):"
 	@echo "  make run-research            Run research agent"
 	@echo "  make run-verification        Run verification agent"
 	@echo "  make run-orchestration       Run trpc-agent orchestration"
@@ -13,8 +22,10 @@ help:
 	@echo "  make run-all                 Run all agents with trpc-agent orchestrator"
 	@echo "  make run-all-eino            Run all agents with Eino orchestrator"
 	@echo "  make run-mcp                 Run MCP server (requires agents running)"
-	@echo "  make clean                   Clean build artifacts"
+	@echo ""
+	@echo "Other Commands:"
 	@echo "  make test                    Run tests"
+	@echo "  make clean                   Clean build artifacts"
 
 install:
 	go mod download
@@ -35,6 +46,24 @@ build-mcp:
 	@echo "Building MCP server..."
 	go build -o bin/mcp-server mcp/server/main.go
 	@echo "MCP server build complete!"
+
+docker-build:
+	@echo "Building Docker image..."
+	docker build -t stats-agent-team:latest .
+	@echo "Docker build complete!"
+
+docker-up:
+	@echo "Starting all agents with Docker Compose..."
+	docker-compose up -d
+	@echo "All agents started! Use 'make docker-logs' to view logs"
+
+docker-down:
+	@echo "Stopping all agents..."
+	docker-compose down
+	@echo "All agents stopped"
+
+docker-logs:
+	docker-compose logs -f
 
 run-research:
 	@echo "Starting Research Agent on :8001 (HTTP) and :9001 (A2A)..."

@@ -87,6 +87,7 @@ The system consists of **3 specialized agents** with **2 orchestration options**
 - ✅ **Eino framework** for deterministic graph orchestration
 - ✅ **Gemini 2.0 Flash model** for fast, accurate LLM operations
 - ✅ **MCP Server** for integration with Claude Code and other MCP clients ⭐
+- ✅ **Docker deployment** for easy containerized setup 🐳
 - ✅ **Source verification** to prevent hallucinations
 - ✅ **Reputable source prioritization** (government, academic, research orgs)
 - ✅ **Structured JSON output** with complete metadata
@@ -182,19 +183,52 @@ make build
 
 ## Usage
 
-### Running the Agents
+You can run the system either with Docker (containerized) or locally. Choose the method that best fits your needs.
 
-#### Option 1: Run all agents with Eino orchestrator (Recommended)
+| Method | Best For | Command |
+|--------|----------|---------|
+| **Docker** 🐳 | Production, quick start, isolated environment | `docker-compose up -d` |
+| **Local** 💻 | Development, debugging, customization | `make run-all-eino` |
+
+### Quick Start with Docker 🐳
+
+The fastest way to get started:
+
+```bash
+# Start all agents with Docker Compose
+docker-compose up -d
+
+# Test the orchestration endpoint
+curl -X POST http://localhost:8003/orchestrate \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "climate change", "min_verified_stats": 5}'
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+See [DOCKER.md](DOCKER.md) for complete Docker deployment guide.
+
+---
+
+### Local Development Setup
+
+#### Running the Agents Locally
+
+##### Option 1: Run all agents with Eino orchestrator (Recommended)
 ```bash
 make run-all-eino
 ```
 
-#### Option 2: Run all agents with ADK orchestrator
+##### Option 2: Run all agents with ADK orchestrator
 ```bash
 make run-all
 ```
 
-#### Option 3: Run each agent separately (in different terminals)
+##### Option 3: Run each agent separately (in different terminals)
 ```bash
 # Terminal 1: Research Agent (ADK)
 make run-research
@@ -207,9 +241,9 @@ make run-orchestration       # ADK version (LLM-based)
 make run-orchestration-eino  # Eino version (deterministic, recommended)
 ```
 
-### Using the CLI
+#### Using the CLI (Local Only)
 
-Once the agents are running, use the CLI to search for statistics:
+Once the agents are running locally, use the CLI to search for statistics:
 
 ```bash
 # Basic search
@@ -220,6 +254,8 @@ Once the agents are running, use the CLI to search for statistics:
 ./bin/stats-agent search "cybersecurity threats 2024"
 ./bin/stats-agent search "renewable energy statistics"
 ```
+
+---
 
 ### Using with Claude Code (MCP Server)
 
@@ -236,7 +272,7 @@ See [MCP_SERVER.md](MCP_SERVER.md) for detailed setup instructions.
 
 ### API Usage
 
-You can also call the agents directly via HTTP:
+You can also call the agents directly via HTTP (works with both Docker and local deployment):
 
 ```bash
 # Call Eino orchestration agent (recommended - deterministic)
