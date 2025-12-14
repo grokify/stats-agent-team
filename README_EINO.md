@@ -280,7 +280,3 @@ The Eino orchestrator provides detailed logging with `[Eino]` prefix:
 ## Contributing
 
 Contributions to improve the Eino orchestration workflow are welcome!
-
-## License
-
-[Your license]

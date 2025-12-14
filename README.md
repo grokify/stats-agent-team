@@ -1,4 +1,10 @@
-# Statistics Agent
+# Statistics Agent Team
+
+[![Build Status][build-status-svg]][build-status-url]
+[![Lint Status][lint-status-svg]][lint-status-url]
+[![Go Report Card][goreport-svg]][goreport-url]
+[![Docs][docs-godoc-svg]][docs-godoc-url]
+[![License][license-svg]][license-url]
 
 A multi-agent system for finding and verifying statistics from reputable web sources using Go, built with [Google ADK (Agent Development Kit)](https://github.com/google/adk-go) and [Eino](https://github.com/cloudwego/eino).
 
@@ -336,17 +342,27 @@ Contributions welcome! Please:
 4. Add tests
 5. Submit a pull request
 
-## License
-
-[Your chosen license]
-
-## Contact
-
-[Your contact information]
-
 ## Acknowledgments
 
 - Built with [Google ADK (Agent Development Kit)](https://github.com/google/adk-go)
 - Uses [Eino](https://github.com/cloudwego/eino) for deterministic orchestration
 - Powered by Google Gemini 2.0 Flash model
 - Inspired by multi-agent collaboration frameworks
+
+ [used-by-svg]: https://sourcegraph.com/github.com/grokify/stats-agent-team/-/badge.svg
+ [used-by-url]: https://sourcegraph.com/github.com/grokify/stats-agent-team?badge
+ [build-status-svg]: https://github.com/grokify/stats-agent-team/actions/workflows/ci.yaml/badge.svg?branch=master
+ [build-status-url]: https://github.com/grokify/stats-agent-team/actions/workflows/ci.yaml
+ [lint-status-svg]: https://github.com/grokify/stats-agent-team/actions/workflows/lint.yaml/badge.svg?branch=master
+ [lint-status-url]: https://github.com/grokify/stats-agent-team/actions/workflows/lint.yaml
+ [goreport-svg]: https://goreportcard.com/badge/github.com/grokify/stats-agent-team
+ [goreport-url]: https://goreportcard.com/report/github.com/grokify/stats-agent-team
+ [codeclimate-status-svg]: https://codeclimate.com/github/grokify/stats-agent-team/badges/gpa.svg
+ [codeclimate-status-url]: https://codeclimate.com/github/grokify/stats-agent-team
+ [docs-godoc-svg]: https://pkg.go.dev/badge/github.com/grokify/stats-agent-team
+ [docs-godoc-url]: https://pkg.go.dev/github.com/grokify/stats-agent-team
+ [loc-svg]: https://tokei.rs/b1/github/grokify/stats-agent-team
+ [repo-url]: https://github.com/grokify/stats-agent-team
+ [license-svg]: https://img.shields.io/badge/license-MIT-blue.svg
+ [license-url]: https://github.com/grokify/stats-agent-team/blob/master/LICENSE
+ 
