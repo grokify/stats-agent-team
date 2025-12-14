@@ -19,8 +19,9 @@ type Config struct {
 	OllamaURL    string
 
 	// Search Configuration
-	SearchProvider string
-	SearchAPIKey   string
+	SearchProvider string // "serper", "serpapi"
+	SerperAPIKey   string
+	SerpAPIKey     string
 
 	// Agent Configuration
 	ResearchAgentURL     string
@@ -52,8 +53,9 @@ func LoadConfig() *Config {
 		OllamaURL:    getEnv("OLLAMA_URL", "http://localhost:11434"),
 
 		// Search settings
-		SearchProvider: getEnv("SEARCH_PROVIDER", "google"),
-		SearchAPIKey:   getEnv("SEARCH_API_KEY", ""),
+		SearchProvider: getEnv("SEARCH_PROVIDER", "serper"),
+		SerperAPIKey:   getEnv("SERPER_API_KEY", ""),
+		SerpAPIKey:     getEnv("SERPAPI_API_KEY", ""),
 
 		// Agent URLs
 		ResearchAgentURL:     getEnv("RESEARCH_AGENT_URL", "http://localhost:8001"),

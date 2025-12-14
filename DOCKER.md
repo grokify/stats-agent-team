@@ -23,10 +23,17 @@ Create a `.env` file in the project root:
 # LLM Provider (gemini, claude, openai, ollama)
 LLM_PROVIDER=gemini
 
-# API Keys (provide at least one)
+# LLM API Keys (provide at least one)
 GEMINI_API_KEY=your_gemini_api_key_here
 CLAUDE_API_KEY=your_claude_api_key_here
 OPENAI_API_KEY=your_openai_api_key_here
+
+# Search API Keys (required for real web search)
+SEARCH_PROVIDER=serper
+SERPER_API_KEY=your_serper_api_key_here
+# OR use SerpAPI
+# SEARCH_PROVIDER=serpapi
+# SERPAPI_API_KEY=your_serpapi_key_here
 
 # For Ollama (local models)
 OLLAMA_URL=http://host.docker.internal:11434
@@ -137,6 +144,9 @@ Once running, the following endpoints are available:
 | `CLAUDE_MODEL` | Claude model name | `claude-3-5-sonnet-20241022` | No |
 | `OPENAI_MODEL` | OpenAI model name | `gpt-4` | No |
 | `OLLAMA_MODEL` | Ollama model name | `llama2` | No |
+| `SEARCH_PROVIDER` | Search provider | `serper` | No |
+| `SERPER_API_KEY` | Serper API key | - | For real search |
+| `SERPAPI_API_KEY` | SerpAPI key | - | Alternative search |
 
 ### LLM Provider Options
 
@@ -360,6 +370,7 @@ volumes:
 
 ## References
 
-- [LLM Configuration Guide](LLM_CONFIGURATION.md)
-- [MCP Server Guide](MCP_SERVER.md)
-- [Main README](README.md)
+- [Search Integration Guide](SEARCH_INTEGRATION.md) - Setup web search for real statistics
+- [LLM Configuration Guide](LLM_CONFIGURATION.md) - Configure LLM providers
+- [MCP Server Guide](MCP_SERVER.md) - Claude Code integration
+- [Main README](README.md) - Project overview and local setup

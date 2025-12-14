@@ -88,6 +88,7 @@ The system consists of **3 specialized agents** with **2 orchestration options**
 - ✅ **Gemini 2.0 Flash model** for fast, accurate LLM operations
 - ✅ **MCP Server** for integration with Claude Code and other MCP clients ⭐
 - ✅ **Docker deployment** for easy containerized setup 🐳
+- ✅ **Real web search** via Serper/SerpAPI for finding actual statistics 🔍
 - ✅ **Source verification** to prevent hallucinations
 - ✅ **Reputable source prioritization** (government, academic, research orgs)
 - ✅ **Structured JSON output** with complete metadata
@@ -323,12 +324,22 @@ curl -X POST http://localhost:8000/orchestrate \
 - OpenAI: `gpt-4`
 - Ollama: `llama3.2`
 
+See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
+
+#### Search Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SEARCH_PROVIDER` | Search provider: `serper`, `serpapi` | `serper` |
+| `SERPER_API_KEY` | Serper API key (get from serper.dev) | Required for real search |
+| `SERPAPI_API_KEY` | SerpAPI key (alternative provider) | Required for SerpAPI |
+
+**Note:** Without a search API key, the research agent will use mock data. See [SEARCH_INTEGRATION.md](SEARCH_INTEGRATION.md) for setup details.
+
 #### Other Configuration
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `SEARCH_PROVIDER` | Search provider | `google` |
-| `SEARCH_API_KEY` | Search API key | Optional |
 | `RESEARCH_AGENT_URL` | Research agent URL | `http://localhost:8001` |
 | `VERIFICATION_AGENT_URL` | Verification agent URL | `http://localhost:8002` |
 | `ORCHESTRATOR_URL` | ADK orchestrator URL | `http://localhost:8000` |

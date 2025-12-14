@@ -25,6 +25,11 @@ services:
       # Ollama Configuration
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
 
+      # Search Configuration
+      - SEARCH_PROVIDER=${SEARCH_PROVIDER:-serper}
+      - SERPER_API_KEY=${SERPER_API_KEY:-}
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY:-}
+
       # Agent URLs (internal communication)
       - RESEARCH_AGENT_URL=http://localhost:8001
       - VERIFICATION_AGENT_URL=http://localhost:8002

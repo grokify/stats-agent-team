@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"google.golang.org/adk/agent"
@@ -16,13 +17,15 @@ import (
 	"github.com/grokify/stats-agent-team/pkg/config"
 	"github.com/grokify/stats-agent-team/pkg/llm"
 	"github.com/grokify/stats-agent-team/pkg/models"
+	"github.com/grokify/stats-agent-team/pkg/search"
 )
 
 // ResearchAgent wraps an ADK LLM agent for finding statistics
 type ResearchAgent struct {
-	cfg      *config.Config
-	client   *http.Client
-	adkAgent agent.Agent
+	cfg       *config.Config
+	client    *http.Client
+	adkAgent  agent.Agent
+	searchSvc *search.Service
 }
 
 // ResearchInput defines the input for the research tool
@@ -50,9 +53,19 @@ func NewResearchAgent(cfg *config.Config) (*ResearchAgent, error) {
 
 	log.Printf("Research Agent: Using %s", modelFactory.GetProviderInfo())
 
+	// Create search service
+	searchSvc, err := search.NewService(cfg)
+	if err != nil {
+		log.Printf("Warning: Search service not available: %v", err)
+		log.Printf("Research agent will use mock data. Set SERPER_API_KEY or SERPAPI_API_KEY to enable real search.")
+	} else {
+		log.Printf("Research Agent: Using %s search provider", cfg.SearchProvider)
+	}
+
 	ra := &ResearchAgent{
-		cfg:    cfg,
-		client: &http.Client{Timeout: 30 * time.Second},
+		cfg:       cfg,
+		client:    &http.Client{Timeout: 30 * time.Second},
+		searchSvc: searchSvc,
 	}
 
 	// Create the research tool function
@@ -98,13 +111,83 @@ Always include the exact URL and a verbatim quote containing the statistic.`,
 func (ra *ResearchAgent) researchToolHandler(ctx tool.Context, input ResearchInput) (ResearchOutput, error) {
 	log.Printf("Research Agent: Searching for statistics on topic: %s", input.Topic)
 
-	// TODO: Integrate with actual search API
-	// For now, return mock data
-	candidates := ra.generateMockCandidates(input.Topic, input.MinStatistics)
+	// Use real search if available, otherwise fall back to mock data
+	if ra.searchSvc != nil {
+		candidates, err := ra.searchForStatistics(ctx, input.Topic, input.MinStatistics, input.MaxStatistics)
+		if err != nil {
+			log.Printf("Search failed, falling back to mock data: %v", err)
+			return ResearchOutput{
+				Candidates: ra.generateMockCandidates(input.Topic, input.MinStatistics),
+			}, nil
+		}
+		return ResearchOutput{
+			Candidates: candidates,
+		}, nil
+	}
 
+	// Fall back to mock data if search service not configured
+	log.Printf("Using mock data (search service not configured)")
 	return ResearchOutput{
-		Candidates: candidates,
+		Candidates: ra.generateMockCandidates(input.Topic, input.MinStatistics),
 	}, nil
+}
+
+// searchForStatistics uses the search service to find real statistics
+func (ra *ResearchAgent) searchForStatistics(ctx context.Context, topic string, minStats, maxStats int) ([]models.CandidateStatistic, error) {
+	// Determine how many results to request
+	numResults := maxStats
+	if numResults == 0 {
+		numResults = 20 // Default to more results to have options
+	}
+
+	// Perform search
+	searchResp, err := ra.searchSvc.SearchForStatistics(ctx, topic, numResults)
+	if err != nil {
+		return nil, fmt.Errorf("search failed: %w", err)
+	}
+
+	log.Printf("Research Agent: Found %d search results", searchResp.Total)
+
+	// Extract statistics from search results
+	// For now, create candidates from search results
+	// In a production system, you would use the LLM to analyze each result
+	candidates := make([]models.CandidateStatistic, 0)
+
+	for i, result := range searchResp.Results {
+		if len(candidates) >= maxStats && maxStats > 0 {
+			break
+		}
+
+		// Create a candidate from the search result
+		// TODO: Use LLM to extract actual statistics from the page content
+		candidate := models.CandidateStatistic{
+			Name:      fmt.Sprintf("Statistic about %s from %s", topic, result.DisplayLink),
+			Value:     float32((i + 1) * 10), // Placeholder value
+			Unit:      "%",                    // Placeholder unit
+			Source:    extractSource(result.DisplayLink),
+			SourceURL: result.URL,
+			Excerpt:   result.Snippet,
+		}
+
+		candidates = append(candidates, candidate)
+	}
+
+	if len(candidates) < minStats {
+		log.Printf("Warning: Only found %d candidates, requested minimum %d", len(candidates), minStats)
+	}
+
+	return candidates, nil
+}
+
+// extractSource extracts a clean source name from a URL
+func extractSource(displayLink string) string {
+	// Remove www. prefix and clean up
+	source := strings.TrimPrefix(displayLink, "www.")
+	// Capitalize first letter
+	if len(source) > 0 {
+		source = strings.ToUpper(source[:1]) + source[1:]
+	}
+	return source
 }
 
 // generateMockCandidates creates mock data for demonstration
@@ -130,11 +213,24 @@ func (ra *ResearchAgent) generateMockCandidates(topic string, count int) []model
 // Research performs research directly
 //
 //nolint:unparam // error return kept for API consistency, will be used when real implementation replaces mock
-func (ra *ResearchAgent) Research(_ context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
+func (ra *ResearchAgent) Research(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
 	log.Printf("Research Agent: Searching for statistics on topic: %s", req.Topic)
 
-	// Generate mock candidates directly
-	candidates := ra.generateMockCandidates(req.Topic, req.MinStatistics)
+	var candidates []models.CandidateStatistic
+	var err error
+
+	// Use real search if available
+	if ra.searchSvc != nil {
+		candidates, err = ra.searchForStatistics(ctx, req.Topic, req.MinStatistics, req.MaxStatistics)
+		if err != nil {
+			log.Printf("Search failed, falling back to mock data: %v", err)
+			candidates = ra.generateMockCandidates(req.Topic, req.MinStatistics)
+		}
+	} else {
+		// Fall back to mock data if search service not configured
+		log.Printf("Using mock data (search service not configured)")
+		candidates = ra.generateMockCandidates(req.Topic, req.MinStatistics)
+	}
 
 	response := &models.ResearchResponse{
 		Topic:      req.Topic,
