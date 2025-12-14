@@ -351,9 +351,9 @@ Contributions welcome! Please:
 
  [used-by-svg]: https://sourcegraph.com/github.com/grokify/stats-agent-team/-/badge.svg
  [used-by-url]: https://sourcegraph.com/github.com/grokify/stats-agent-team?badge
- [build-status-svg]: https://github.com/grokify/stats-agent-team/actions/workflows/ci.yaml/badge.svg?branch=master
+ [build-status-svg]: https://github.com/grokify/stats-agent-team/actions/workflows/ci.yaml/badge.svg?branch=main
  [build-status-url]: https://github.com/grokify/stats-agent-team/actions/workflows/ci.yaml
- [lint-status-svg]: https://github.com/grokify/stats-agent-team/actions/workflows/lint.yaml/badge.svg?branch=master
+ [lint-status-svg]: https://github.com/grokify/stats-agent-team/actions/workflows/lint.yaml/badge.svg?branch=main
  [lint-status-url]: https://github.com/grokify/stats-agent-team/actions/workflows/lint.yaml
  [goreport-svg]: https://goreportcard.com/badge/github.com/grokify/stats-agent-team
  [goreport-url]: https://goreportcard.com/report/github.com/grokify/stats-agent-team
@@ -365,4 +365,3 @@ Contributions welcome! Please:
  [repo-url]: https://github.com/grokify/stats-agent-team
  [license-svg]: https://img.shields.io/badge/license-MIT-blue.svg
  [license-url]: https://github.com/grokify/stats-agent-team/blob/master/LICENSE
- 
