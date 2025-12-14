@@ -1,0 +1,9 @@
+.DS_Store
+.env
+_*
+*.tar
+bin/
+coverage.txt
+debug.test
+main
+main.zip
