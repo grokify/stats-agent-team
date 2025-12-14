@@ -76,3 +76,28 @@ type OrchestrationResponse struct {
 	FailedCount     int         `json:"failed_count"`
 	Timestamp       time.Time   `json:"timestamp"`
 }
+
+// SearchResult represents a source URL from research agent
+type SearchResult struct {
+	URL      string `json:"url"`
+	Title    string `json:"title"`
+	Snippet  string `json:"snippet"`
+	Domain   string `json:"domain"`
+	Position int    `json:"position,omitempty"`
+}
+
+// SynthesisRequest is the request to synthesis agent
+type SynthesisRequest struct {
+	Topic         string         `json:"topic"`
+	SearchResults []SearchResult `json:"search_results"`
+	MinStatistics int            `json:"min_statistics"`
+	MaxStatistics int            `json:"max_statistics"`
+}
+
+// SynthesisResponse is the response from synthesis agent
+type SynthesisResponse struct {
+	Topic           string               `json:"topic"`
+	Candidates      []CandidateStatistic `json:"candidates"`
+	SourcesAnalyzed int                  `json:"sources_analyzed"`
+	Timestamp       time.Time            `json:"timestamp"`
+}

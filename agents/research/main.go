@@ -9,58 +9,42 @@ import (
 	"strings"
 	"time"
 
-	"google.golang.org/adk/agent"
-	"google.golang.org/adk/agent/llmagent"
-	"google.golang.org/adk/tool"
-	"google.golang.org/adk/tool/functiontool"
-
 	"github.com/grokify/stats-agent-team/pkg/config"
-	"github.com/grokify/stats-agent-team/pkg/llm"
 	"github.com/grokify/stats-agent-team/pkg/models"
 	"github.com/grokify/stats-agent-team/pkg/search"
 )
 
-// ResearchAgent wraps an ADK LLM agent for finding statistics
+// ResearchAgent finds relevant sources using web search
+// Note: This agent now focuses ONLY on search - no LLM analysis
+// Statistics extraction is handled by the Synthesis Agent
 type ResearchAgent struct {
 	cfg       *config.Config
 	client    *http.Client
-	adkAgent  agent.Agent
 	searchSvc *search.Service
 }
 
 // ResearchInput defines the input for the research tool
 type ResearchInput struct {
-	Topic         string `json:"topic" jsonschema:"description=The topic to research statistics for"`
-	MinStatistics int    `json:"min_statistics" jsonschema:"description=Minimum number of statistics to find"`
-	MaxStatistics int    `json:"max_statistics" jsonschema:"description=Maximum number of statistics to find"`
+	Topic        string `json:"topic" jsonschema:"description=The topic to research statistics for"`
+	NumResults   int    `json:"num_results" jsonschema:"description=Number of search results to return"`
+	ReputableOnly bool  `json:"reputable_only" jsonschema:"description=Only return reputable sources"`
 }
 
 // ResearchOutput defines the output from the research tool
 type ResearchOutput struct {
-	Candidates []models.CandidateStatistic `json:"candidates"`
+	SearchResults []models.SearchResult `json:"search_results"`
 }
 
-// NewResearchAgent creates a new ADK-based research agent
+// NewResearchAgent creates a new search-focused research agent
 func NewResearchAgent(cfg *config.Config) (*ResearchAgent, error) {
-	ctx := context.Background()
-
-	// Create model using factory
-	modelFactory := llm.NewModelFactory(cfg)
-	model, err := modelFactory.CreateModel(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create model: %w", err)
-	}
-
-	log.Printf("Research Agent: Using %s", modelFactory.GetProviderInfo())
-
 	// Create search service
 	searchSvc, err := search.NewService(cfg)
 	if err != nil {
-		log.Printf("Warning: Search service not available: %v", err)
-		log.Printf("Research agent will use mock data. Set SERPER_API_KEY or SERPAPI_API_KEY to enable real search.")
-	} else {
-		log.Printf("Research Agent: Using %s search provider", cfg.SearchProvider)
+		return nil, fmt.Errorf("search service required: %w", err)
 	}
+
+	log.Printf("Research Agent: Using %s search provider", cfg.SearchProvider)
+	log.Printf("Research Agent: Focuses on finding relevant sources (no LLM analysis)")
 
 	ra := &ResearchAgent{
 		cfg:       cfg,
@@ -68,76 +52,15 @@ func NewResearchAgent(cfg *config.Config) (*ResearchAgent, error) {
 		searchSvc: searchSvc,
 	}
 
-	// Create the research tool function
-	researchTool, err := functiontool.New(functiontool.Config{
-		Name:        "research_statistics",
-		Description: "Searches for and extracts statistics on a given topic from reputable sources",
-	}, ra.researchToolHandler)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create research tool: %w", err)
-	}
-
-	// Create the ADK agent
-	adkAgent, err := llmagent.New(llmagent.Config{
-		Name:        "statistics_research_agent",
-		Model:       model,
-		Description: "Finds verifiable statistics from reputable web sources",
-		Instruction: `You are a statistics research agent. Your job is to:
-1. Search the web for relevant statistics on the given topic
-2. Prioritize reputable sources (academic journals, government agencies, established research organizations)
-3. Extract numerical values with their context
-4. Capture verbatim excerpts that contain the statistic
-5. Return well-structured candidate statistics
-
-Reputable sources include:
-- Government agencies (CDC, NIH, Census Bureau, etc.)
-- Academic institutions and journals
-- Established research organizations (Pew Research, Gallup, etc.)
-- International organizations (WHO, UN, World Bank, etc.)
-
-Always include the exact URL and a verbatim quote containing the statistic.`,
-		Tools: []tool.Tool{researchTool},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create ADK agent: %w", err)
-	}
-
-	ra.adkAgent = adkAgent
-
 	return ra, nil
 }
 
-// researchToolHandler implements the actual research logic
-func (ra *ResearchAgent) researchToolHandler(ctx tool.Context, input ResearchInput) (ResearchOutput, error) {
-	log.Printf("Research Agent: Searching for statistics on topic: %s", input.Topic)
+// findSources performs web search and returns relevant URLs
+func (ra *ResearchAgent) findSources(ctx context.Context, topic string, numResults int, reputableOnly bool) ([]models.SearchResult, error) {
+	log.Printf("Research Agent: Searching for sources on topic: %s", topic)
 
-	// Use real search if available, otherwise fall back to mock data
-	if ra.searchSvc != nil {
-		candidates, err := ra.searchForStatistics(ctx, input.Topic, input.MinStatistics, input.MaxStatistics)
-		if err != nil {
-			log.Printf("Search failed, falling back to mock data: %v", err)
-			return ResearchOutput{
-				Candidates: ra.generateMockCandidates(input.Topic, input.MinStatistics),
-			}, nil
-		}
-		return ResearchOutput{
-			Candidates: candidates,
-		}, nil
-	}
-
-	// Fall back to mock data if search service not configured
-	log.Printf("Using mock data (search service not configured)")
-	return ResearchOutput{
-		Candidates: ra.generateMockCandidates(input.Topic, input.MinStatistics),
-	}, nil
-}
-
-// searchForStatistics uses the search service to find real statistics
-func (ra *ResearchAgent) searchForStatistics(ctx context.Context, topic string, minStats, maxStats int) ([]models.CandidateStatistic, error) {
-	// Determine how many results to request
-	numResults := maxStats
-	if numResults == 0 {
-		numResults = 20 // Default to more results to have options
+	if numResults <= 0 {
+		numResults = 10
 	}
 
 	// Perform search
@@ -148,88 +71,78 @@ func (ra *ResearchAgent) searchForStatistics(ctx context.Context, topic string, 
 
 	log.Printf("Research Agent: Found %d search results", searchResp.Total)
 
-	// Extract statistics from search results
-	// For now, create candidates from search results
-	// In a production system, you would use the LLM to analyze each result
-	candidates := make([]models.CandidateStatistic, 0)
-
+	// Convert search results to our model format
+	results := make([]models.SearchResult, 0, len(searchResp.Results))
 	for i, result := range searchResp.Results {
-		if len(candidates) >= maxStats && maxStats > 0 {
+		// Filter for reputable sources if requested
+		if reputableOnly && !isReputableSource(result.DisplayLink) {
+			log.Printf("Filtering out non-reputable source: %s", result.DisplayLink)
+			continue
+		}
+
+		results = append(results, models.SearchResult{
+			URL:      result.URL,
+			Title:    result.Title,
+			Snippet:  result.Snippet,
+			Domain:   result.DisplayLink,
+			Position: i + 1,
+		})
+	}
+
+	log.Printf("Research Agent: Returning %d sources", len(results))
+	return results, nil
+}
+
+// isReputableSource checks if a domain is from a reputable source
+func isReputableSource(domain string) bool {
+	reputableDomains := []string{
+		".gov", ".edu", // Government and education
+		"who.int", "un.org", "worldbank.org", // International orgs
+		"pewresearch.org", "gallup.com", // Research organizations
+		"nature.com", "science.org", "nejm.org", // Journals
+	}
+
+	domainLower := strings.ToLower(domain)
+	for _, rep := range reputableDomains {
+		if strings.Contains(domainLower, rep) {
+			return true
+		}
+	}
+	return false
+}
+
+// Research finds sources for a given topic (returns URLs, not statistics)
+func (ra *ResearchAgent) Research(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
+	log.Printf("Research Agent: Finding sources for topic: %s", req.Topic)
+
+	// Determine number of results to fetch
+	numResults := req.MaxStatistics
+	if numResults == 0 {
+		numResults = 20 // Default
+	}
+
+	// Find sources
+	searchResults, err := ra.findSources(ctx, req.Topic, numResults, req.ReputableOnly)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find sources: %w", err)
+	}
+
+	// Note: We now return SearchResults, which will be analyzed by Synthesis Agent
+	// Convert to old format for backward compatibility (temporary)
+	candidates := make([]models.CandidateStatistic, 0, len(searchResults))
+	for i, result := range searchResults {
+		if i >= req.MaxStatistics && req.MaxStatistics > 0 {
 			break
 		}
-
-		// Create a candidate from the search result
-		// TODO: Use LLM to extract actual statistics from the page content
-		candidate := models.CandidateStatistic{
-			Name:      fmt.Sprintf("Statistic about %s from %s", topic, result.DisplayLink),
-			Value:     float32((i + 1) * 10), // Placeholder value
-			Unit:      "%",                    // Placeholder unit
-			Source:    extractSource(result.DisplayLink),
+		// Placeholder candidate - real extraction happens in Synthesis Agent
+		candidates = append(candidates, models.CandidateStatistic{
+			Name:      fmt.Sprintf("Source from %s", result.Domain),
+			Value:     0, // Will be extracted by Synthesis Agent
+			Unit:      "",
+			Source:    result.Domain,
 			SourceURL: result.URL,
 			Excerpt:   result.Snippet,
-		}
-
-		candidates = append(candidates, candidate)
-	}
-
-	if len(candidates) < minStats {
-		log.Printf("Warning: Only found %d candidates, requested minimum %d", len(candidates), minStats)
-	}
-
-	return candidates, nil
-}
-
-// extractSource extracts a clean source name from a URL
-func extractSource(displayLink string) string {
-	// Remove www. prefix and clean up
-	source := strings.TrimPrefix(displayLink, "www.")
-	// Capitalize first letter
-	if len(source) > 0 {
-		source = strings.ToUpper(source[:1]) + source[1:]
-	}
-	return source
-}
-
-// generateMockCandidates creates mock data for demonstration
-func (ra *ResearchAgent) generateMockCandidates(topic string, count int) []models.CandidateStatistic {
-	if count < 5 {
-		count = 5
-	}
-
-	candidates := make([]models.CandidateStatistic, count)
-	for i := 0; i < count; i++ {
-		candidates[i] = models.CandidateStatistic{
-			Name:      fmt.Sprintf("Statistic #%d about %s", i+1, topic),
-			Value:     float32((i + 1) * 10),
-			Unit:      "%",
-			Source:    "Pew Research Center",
-			SourceURL: fmt.Sprintf("https://www.pewresearch.org/example-%d", i+1),
-			Excerpt:   fmt.Sprintf("According to our latest survey, %d%% of respondents reported...", (i+1)*10),
-		}
-	}
-	return candidates
-}
-
-// Research performs research directly
-//
-//nolint:unparam // error return kept for API consistency, will be used when real implementation replaces mock
-func (ra *ResearchAgent) Research(ctx context.Context, req *models.ResearchRequest) (*models.ResearchResponse, error) {
-	log.Printf("Research Agent: Searching for statistics on topic: %s", req.Topic)
-
-	var candidates []models.CandidateStatistic
-	var err error
-
-	// Use real search if available
-	if ra.searchSvc != nil {
-		candidates, err = ra.searchForStatistics(ctx, req.Topic, req.MinStatistics, req.MaxStatistics)
-		if err != nil {
-			log.Printf("Search failed, falling back to mock data: %v", err)
-			candidates = ra.generateMockCandidates(req.Topic, req.MinStatistics)
-		}
-	} else {
-		// Fall back to mock data if search service not configured
-		log.Printf("Using mock data (search service not configured)")
-		candidates = ra.generateMockCandidates(req.Topic, req.MinStatistics)
+		})
 	}
 
 	response := &models.ResearchResponse{
@@ -238,7 +151,7 @@ func (ra *ResearchAgent) Research(ctx context.Context, req *models.ResearchReque
 		Timestamp:  time.Now(),
 	}
 
-	log.Printf("Research Agent: Found %d candidate statistics", len(candidates))
+	log.Printf("Research Agent: Found %d sources", len(searchResults))
 	return response, nil
 }
 
@@ -300,7 +213,8 @@ func main() {
 	})
 
 	log.Println("Research Agent HTTP server starting on :8001")
-	log.Println("(ADK agent initialized for future A2A integration)")
+	log.Println("Role: Find relevant sources via web search (no LLM)")
+	log.Println("Next step: Synthesis Agent extracts statistics from these sources")
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("HTTP server failed: %v", err)
 	}

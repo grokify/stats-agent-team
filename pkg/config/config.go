@@ -25,6 +25,7 @@ type Config struct {
 
 	// Agent Configuration
 	ResearchAgentURL     string
+	SynthesisAgentURL    string
 	VerificationAgentURL string
 	OrchestratorURL      string
 	OrchestratorEinoURL  string
@@ -59,6 +60,7 @@ func LoadConfig() *Config {
 
 		// Agent URLs
 		ResearchAgentURL:     getEnv("RESEARCH_AGENT_URL", "http://localhost:8001"),
+		SynthesisAgentURL:    getEnv("SYNTHESIS_AGENT_URL", "http://localhost:8004"),
 		VerificationAgentURL: getEnv("VERIFICATION_AGENT_URL", "http://localhost:8002"),
 		OrchestratorURL:      getEnv("ORCHESTRATOR_URL", "http://localhost:8000"),
 		OrchestratorEinoURL:  getEnv("ORCHESTRATOR_EINO_URL", "http://localhost:8003"),
