@@ -151,7 +151,6 @@ func (va *VerificationAgent) verifyStatistic(ctx context.Context, candidate mode
 	}
 }
 
-
 // Verify processes a verification request
 //
 //nolint:unparam // error return kept for API consistency

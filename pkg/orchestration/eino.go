@@ -243,8 +243,8 @@ func (oa *EinoOrchestrationAgent) buildWorkflowGraph() *compose.Graph[*models.Or
 	// Add edges to define the workflow
 	_ = g.AddEdge(compose.START, nodeValidateInput)
 	_ = g.AddEdge(nodeValidateInput, nodeResearch)
-	_ = g.AddEdge(nodeResearch, nodeSynthesis)      // NEW: Research → Synthesis
-	_ = g.AddEdge(nodeSynthesis, nodeVerification)  // NEW: Synthesis → Verification
+	_ = g.AddEdge(nodeResearch, nodeSynthesis)     // NEW: Research → Synthesis
+	_ = g.AddEdge(nodeSynthesis, nodeVerification) // NEW: Synthesis → Verification
 	_ = g.AddEdge(nodeVerification, nodeCheckQuality)
 
 	// Conditional branching based on quality check

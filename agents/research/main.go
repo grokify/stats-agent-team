@@ -25,9 +25,9 @@ type ResearchAgent struct {
 
 // ResearchInput defines the input for the research tool
 type ResearchInput struct {
-	Topic        string `json:"topic" jsonschema:"description=The topic to research statistics for"`
-	NumResults   int    `json:"num_results" jsonschema:"description=Number of search results to return"`
-	ReputableOnly bool  `json:"reputable_only" jsonschema:"description=Only return reputable sources"`
+	Topic         string `json:"topic" jsonschema:"description=The topic to research statistics for"`
+	NumResults    int    `json:"num_results" jsonschema:"description=Number of search results to return"`
+	ReputableOnly bool   `json:"reputable_only" jsonschema:"description=Only return reputable sources"`
 }
 
 // ResearchOutput defines the output from the research tool

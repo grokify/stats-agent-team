@@ -29,10 +29,10 @@ type SynthesisAgent struct {
 
 // SynthesisInput defines input for synthesis tool
 type SynthesisInput struct {
-	Topic         string               `json:"topic"`
+	Topic         string                `json:"topic"`
 	SearchResults []models.SearchResult `json:"search_results"`
-	MinStatistics int                  `json:"min_statistics"`
-	MaxStatistics int                  `json:"max_statistics"`
+	MinStatistics int                   `json:"min_statistics"`
+	MaxStatistics int                   `json:"max_statistics"`
 }
 
 // SynthesisToolOutput defines output from synthesis tool
