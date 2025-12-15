@@ -31,7 +31,7 @@ The system implements a **4-agent architecture** with clear separation of concer
 │  • Coordinates 4-agent workflow                         │
 │  • Manages retry logic                                  │
 │  • Ensures quality standards                            │
-└───┬──────────────┬──────────────┬──────────────────────┘
+└───┬──────────────┬──────────────┬───────────────────────┘
     │              │              │
     ▼              ▼              ▼
 ┌────────────┐ ┌──────────┐ ┌─────────────────┐
