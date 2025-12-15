@@ -3,7 +3,7 @@ module github.com/grokify/stats-agent-team
 go 1.25.3
 
 require (
-	github.com/cloudwego/eino v0.7.8
+	github.com/cloudwego/eino v0.7.10
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/grokify/gollm v0.6.1
