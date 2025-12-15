@@ -4,6 +4,8 @@ go 1.25.3
 
 require (
 	github.com/cloudwego/eino v0.7.8
+	github.com/danielgtaylor/huma/v2 v2.34.1
+	github.com/go-chi/chi/v5 v5.2.3
 	github.com/grokify/gollm v0.6.1
 	github.com/grokify/metasearch v0.4.0
 	github.com/jessevdk/go-flags v1.6.1

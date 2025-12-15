@@ -147,7 +147,7 @@ func (sa *SynthesisAgent) synthesisToolHandler(ctx tool.Context, input Synthesis
 // extractStatisticsWithLLM uses LLM to intelligently extract statistics from content
 func (sa *SynthesisAgent) extractStatisticsWithLLM(ctx context.Context, topic string, result models.SearchResult, content string) ([]models.CandidateStatistic, error) {
 	// Truncate content if too long (LLMs have token limits)
-	maxContentLen := 15000 // ~4000 tokens - increased to capture more content
+	maxContentLen := 30000 // ~8000 tokens - increased from 15000 to capture more statistics
 	if len(content) > maxContentLen {
 		content = content[:maxContentLen]
 	}
@@ -281,7 +281,7 @@ func (sa *SynthesisAgent) Synthesize(ctx context.Context, req *models.SynthesisR
 
 	var candidates []models.CandidateStatistic
 	pagesProcessed := 0
-	minPagesToProcess := 5 // Always process at least 5 pages to get diverse statistics
+	minPagesToProcess := 15 // Process at least 15 pages for comprehensive coverage (increased from 5)
 
 	// Analyze each search result
 	for _, result := range req.SearchResults {
@@ -317,8 +317,9 @@ func (sa *SynthesisAgent) Synthesize(ctx context.Context, req *models.SynthesisR
 		}
 
 		// Only stop early if we have well exceeded the minimum requirement
-		if len(candidates) >= req.MinStatistics*2 && pagesProcessed >= minPagesToProcess {
-			log.Printf("Synthesis Agent: Have %d candidates (2x minimum), stopping after %d pages", len(candidates), pagesProcessed)
+		// Use 5x multiplier to account for verification failures (increased from 2x)
+		if len(candidates) >= req.MinStatistics*5 && pagesProcessed >= minPagesToProcess {
+			log.Printf("Synthesis Agent: Have %d candidates (5x minimum), stopping after %d pages", len(candidates), pagesProcessed)
 			break
 		}
 	}

@@ -95,8 +95,9 @@ The system implements a **4-agent architecture** with clear separation of concer
 
 ## Features
 
-- ✅ **Two search modes**: Direct LLM (fast, like ChatGPT) and Multi-agent verification pipeline ⭐ NEW
-- ✅ **Direct LLM search** - Single LLM call with URLs, no agents needed 🚀 NEW
+- ✅ **Three search modes**: Direct LLM (fast), Hybrid (direct + verify), and Full pipeline (thorough) ⭐ NEW
+- ✅ **Direct LLM search** - Single LLM call with URLs, no agents needed 🚀
+- ✅ **Hybrid mode** - LLM discovery + web verification, best of both worlds ⭐ NEW
 - ✅ **Multi-agent orchestration** with chains and workflow coordination
 - ✅ **Google ADK integration** for LLM-based agents
 - ✅ **Eino framework** for deterministic graph orchestration
@@ -263,7 +264,7 @@ make run-orchestration-eino  # Eino version (deterministic, recommended)
 
 #### Using the CLI
 
-The CLI supports two modes: **Direct LLM search** (fast, like ChatGPT) and **Multi-agent verification pipeline** (thorough, verified).
+The CLI supports three modes: **Direct LLM search** (fast, like ChatGPT), **Direct + Verification** (hybrid), and **Multi-agent verification pipeline** (thorough, verified).
 
 ##### Direct Mode (Fast, Recommended for Quick Results)
 
@@ -287,8 +288,48 @@ LLM_PROVIDER=openai OPENAI_API_KEY=your_key \
 **Advantages of Direct Mode:**
 - ⚡ **Fast** - Single LLM call, no multi-agent pipeline
 - 🔗 **URLs included** - Returns source URLs like ChatGPT
-- 🚀 **No agent servers needed** - Works standalone
+- 🔐 **Server-side LLM** - API keys configured on server, not client
 - 💰 **Lower cost** - Single LLM call instead of multiple
+- 📚 **OpenAPI docs** - Interactive Swagger UI at http://localhost:8005/docs
+
+**⚠️ Limitation:** Statistics are **LLM-claimed**, not web-verified (trusts LLM's training data)
+
+##### Direct + Verification Mode (Hybrid - Best of Both Worlds) ⭐ NEW
+
+Combines fast LLM search with actual web verification:
+
+```bash
+# Option 1: Start both agents for hybrid mode with one command
+make run-direct-verify
+
+# Option 2: Start agents separately
+# Terminal 1: Start the direct agent server (handles LLM calls server-side)
+make run-direct
+
+# Terminal 2: For hybrid mode, also start verification agent
+make run-verification
+
+# Then in another terminal:
+# Direct mode - LLM search only
+./bin/stats-agent search "climate change" --direct
+
+# Hybrid mode - LLM + web verification
+./bin/stats-agent search "climate change" --direct --direct-verify
+
+# Request more statistics with verification
+./bin/stats-agent search "AI adoption" --direct --direct-verify --min-stats 15
+```
+
+**Advantages of Hybrid Mode:**
+- ⚡ **Fast** - Single LLM call for discovery (like ChatGPT)
+- ✅ **Verified** - Web scraping validates each claim
+- 🎯 **Accurate** - Filters out LLM hallucinations
+- 💡 **Efficient** - No research/synthesis agents needed, just verification
+
+**How it works:**
+1. LLM provides statistics with source URLs (fast)
+2. Verification agent fetches each URL and validates (thorough)
+3. Returns only web-verified statistics (reliable)
 
 ##### Multi-Agent Pipeline Mode (Thorough Verification)
 
@@ -331,6 +372,7 @@ stats-agent search <topic> [options]
 
 Options:
   -d, --direct              Use direct LLM search (fast, like ChatGPT)
+      --direct-verify       Verify LLM claims with verification agent (requires --direct)
   -m, --min-stats <n>       Minimum statistics to find (default: 10)
   -c, --max-candidates <n>  Max candidates for pipeline mode (default: 50)
   -r, --reputable-only      Only use reputable sources
@@ -338,6 +380,15 @@ Options:
       --orchestrator-url    Override orchestrator URL
   -v, --verbose             Show verbose debug information
       --version             Show version information
+```
+
+**Mode Comparison:**
+
+| Mode | Speed | Accuracy | Agents Needed | Client Needs API Key? | Best For |
+|------|-------|----------|---------------|----------------------|----------|
+| `--direct` | ⚡⚡⚡ Fastest | ⚠️ LLM-claimed | Direct agent only | ❌ No | Quick research, brainstorming |
+| `--direct --direct-verify` | ⚡⚡ Fast | ✅ Web-verified | Direct + Verification | ❌ No | Balanced speed + accuracy |
+| Pipeline (default) | ⚡ Slower | ✅✅ Fully verified | All 4 agents | ❌ No | Maximum reliability |
 ```
 
 ---
@@ -428,6 +479,7 @@ See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
 | Research (ADK) | 8001 | Web search via Serper/SerpAPI |
 | Verification (ADK) | 8002 | LLM-based verification |
 | Synthesis (ADK) | 8004 | LLM-based statistics extraction |
+| **Direct (Huma)** ⭐ | **8005** | **Direct LLM search with OpenAPI docs** |
 | **Orchestration (ADK/Eino)** ⭐ | **8000** | **Both orchestrators (run one at a time)** |
 
 ## Project Structure
@@ -435,6 +487,8 @@ See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
 ```
 stats-agent/
 ├── agents/
+│   ├── direct/             # Direct search agent (Huma + OpenAPI, port 8005) ⭐ NEW
+│   │   └── main.go
 │   ├── orchestration/      # Orchestration agent (Google ADK, port 8000)
 │   │   └── main.go
 │   ├── orchestration-eino/ # Orchestration agent (Eino, port 8000) ⭐

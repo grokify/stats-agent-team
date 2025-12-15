@@ -12,7 +12,6 @@ import (
 	"github.com/jessevdk/go-flags"
 
 	"github.com/grokify/stats-agent-team/pkg/config"
-	"github.com/grokify/stats-agent-team/pkg/direct"
 	"github.com/grokify/stats-agent-team/pkg/models"
 )
 
@@ -39,6 +38,7 @@ type SearchCommand struct {
 	ReputableOnly bool   `short:"r" long:"reputable-only" description:"Only use reputable sources"`
 	Output        string `short:"o" long:"output" default:"both" choice:"json" choice:"text" choice:"both" description:"Output format"`
 	Direct        bool   `short:"d" long:"direct" description:"Use direct LLM search (faster, like ChatGPT)"`
+	DirectVerify  bool   `long:"direct-verify" description:"Verify LLM claims with verification agent (requires --direct and verification agent running)"`
 
 	// Orchestrator options
 	OrchestratorURL string `long:"orchestrator-url" description:"Orchestrator URL (overrides env var)" env:"ORCHESTRATOR_URL"`
@@ -58,9 +58,13 @@ func (cmd *SearchCommand) Execute([]string) error { // param `args []string`
 
 	// Use direct LLM mode if requested
 	if cmd.Direct {
-		fmt.Println("mode: Direct LLM search (fast, like ChatGPT)")
+		if cmd.DirectVerify {
+			fmt.Println("mode: Direct LLM search + Verification Agent (hybrid)")
+		} else {
+			fmt.Println("mode: Direct LLM search (fast, like ChatGPT)")
+		}
 		fmt.Println()
-		resp, err = callDirectLLMSearch(cfg, topic, cmd.MinStats)
+		resp, err = callDirectLLMSearch(cfg, topic, cmd.MinStats, cmd.DirectVerify)
 		if err != nil {
 			return fmt.Errorf("direct LLM search failed: %w", err)
 		}
@@ -229,13 +233,56 @@ stats-agent search "renewable energy" --reputable-only
 	}
 }
 
-func callDirectLLMSearch(cfg *config.Config, topic string, minStats int) (*models.OrchestrationResponse, error) {
-	directSvc, err := direct.NewLLMSearchService(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create direct search service: %w", err)
+func callDirectLLMSearch(cfg *config.Config, topic string, minStats int, verify bool) (*models.OrchestrationResponse, error) {
+	// Get direct agent URL from config or use default
+	directURL := os.Getenv("DIRECT_AGENT_URL")
+	if directURL == "" {
+		directURL = "http://localhost:8005"
 	}
 
-	return directSvc.SearchStatistics(context.Background(), topic, minStats)
+	// Create request
+	type DirectSearchRequest struct {
+		Topic         string `json:"topic"`
+		MinStats      int    `json:"min_stats"`
+		VerifyWithWeb bool   `json:"verify_with_web"`
+	}
+
+	reqBody := DirectSearchRequest{
+		Topic:         topic,
+		MinStats:      minStats,
+		VerifyWithWeb: verify,
+	}
+
+	reqData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	// Call direct agent
+	url := fmt.Sprintf("%s/search", directURL)
+	httpReq, err := http.NewRequestWithContext(context.Background(), "POST", url, bytes.NewReader(reqData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	httpResp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer httpResp.Body.Close()
+
+	if httpResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", httpResp.StatusCode, httpResp.Status)
+	}
+
+	var resp models.OrchestrationResponse
+	if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &resp, nil
 }
 
 func callOrchestrator(cfg *config.Config, req *models.OrchestrationRequest) (*models.OrchestrationResponse, error) {

@@ -1,4 +1,4 @@
-.PHONY: help build build-mcp docker-build docker-up docker-down docker-logs run-research run-synthesis run-verification run-orchestration run-orchestration-eino run-all run-all-eino run-mcp clean install test
+.PHONY: help build build-mcp docker-build docker-up docker-down docker-logs run-research run-synthesis run-verification run-direct run-orchestration run-orchestration-eino run-all run-all-eino run-direct-verify run-mcp clean install test
 
 help:
 	@echo "Statistics Agent - Make targets"
@@ -18,6 +18,8 @@ help:
 	@echo "  make run-research            Run research agent"
 	@echo "  make run-synthesis           Run synthesis agent"
 	@echo "  make run-verification        Run verification agent"
+	@echo "  make run-direct              Run direct search agent (with OpenAPI docs)"
+	@echo "  make run-direct-verify       Run direct + verification agents (hybrid mode)"
 	@echo "  make run-orchestration       Run trpc-agent orchestration"
 	@echo "  make run-orchestration-eino  Run Eino orchestration"
 	@echo "  make run-all                 Run all agents with trpc-agent orchestrator"
@@ -39,6 +41,7 @@ build:
 	go build -o bin/research agents/research/main.go
 	go build -o bin/synthesis agents/synthesis/main.go
 	go build -o bin/verification agents/verification/main.go
+	go build -o bin/direct agents/direct/main.go
 	go build -o bin/orchestration agents/orchestration/main.go
 	go build -o bin/orchestration-eino agents/orchestration-eino/main.go
 	go build -o bin/stats-agent main.go
@@ -79,6 +82,10 @@ run-verification:
 	@echo "Starting Verification Agent on :8002 (HTTP) and :9002 (A2A)..."
 	go run agents/verification/main.go
 
+run-direct:
+	@echo "Starting Direct Agent on :8005 (HTTP)..."
+	go run agents/direct/main.go
+
 run-orchestration:
 	@echo "Starting Orchestration Agent (trpc-agent) on :8000 (HTTP) and :9000 (A2A)..."
 	go run agents/orchestration/main.go
@@ -109,6 +116,16 @@ run-all-eino:
 	go run agents/synthesis/main.go & \
 	go run agents/verification/main.go & \
 	go run agents/orchestration-eino/main.go & \
+	wait
+
+run-direct-verify:
+	@echo "Starting Direct + Verification agents (hybrid mode)..."
+	@echo "Direct Agent: http://localhost:8005 (OpenAPI docs at /docs)"
+	@echo "Verification Agent: http://localhost:8002"
+	@echo ""
+	@echo "Usage: ./bin/stats-agent search \"topic\" --direct --direct-verify"
+	@go run agents/direct/main.go & \
+	go run agents/verification/main.go & \
 	wait
 
 run-mcp:
