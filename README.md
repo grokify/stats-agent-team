@@ -27,7 +27,7 @@ The system implements a **4-agent architecture** with clear separation of concer
                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │            ORCHESTRATION AGENT                          │
-│         (Port 8000 ADK / 8003 Eino)                     │
+│              (Port 8000 - Both ADK/Eino)                │
 │  • Coordinates 4-agent workflow                         │
 │  • Manages retry logic                                  │
 │  • Ensures quality standards                            │
@@ -90,7 +90,7 @@ The system implements a **4-agent architecture** with clear separation of concer
 - Predictable, reproducible behavior
 - Faster and lower cost
 - Workflow: ValidateInput → Research → Synthesis → Verification → QualityCheck → Format
-- Port: **8003**
+- Port: **8000** (same port as ADK, but they don't run simultaneously)
 - **Recommended for production use**
 
 ## Features
@@ -101,7 +101,7 @@ The system implements a **4-agent architecture** with clear separation of concer
 - ✅ **Google ADK integration** for LLM-based agents
 - ✅ **Eino framework** for deterministic graph orchestration
 - ✅ **Human-in-the-loop retry** - Prompts user when partial results found ⭐ NEW
-- ✅ **Multi-LLM providers** (Gemini, Claude, OpenAI, Ollama, xAI Grok) via unified interface ⭐
+- ✅ **Multi-LLM providers** (Gemini, Claude, OpenAI, Ollama, xAI Grok) via unified interface
 - ✅ **MCP Server** for integration with Claude Code and other MCP clients
 - ✅ **Docker deployment** for easy containerized setup 🐳
 - ✅ **Real web search** via Serper/SerpAPI for finding actual statistics 🔍
@@ -150,6 +150,7 @@ The system returns verified statistics in JSON format:
   - **Gemini** (default): Google API key (set as `GOOGLE_API_KEY` or `GEMINI_API_KEY`)
   - **Claude**: Anthropic API key (set as `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`)
   - **OpenAI**: OpenAI API key (set as `OPENAI_API_KEY`)
+  - **xAI Grok**: xAI API key (set as `XAI_API_KEY`)
   - **Ollama**: Local Ollama installation (default: `http://localhost:11434`)
 - Optional: API keys for search provider (Google Search, etc.)
 
@@ -181,10 +182,14 @@ export ANTHROPIC_API_KEY="your-anthropic-api-key"
 export LLM_PROVIDER="openai"
 export OPENAI_API_KEY="your-openai-api-key"
 
+# For xAI Grok
+export LLM_PROVIDER="xai"
+export XAI_API_KEY="your-xai-api-key"
+
 # For Ollama (local)
 export LLM_PROVIDER="ollama"
 export OLLAMA_URL="http://localhost:11434"
-export LLM_MODEL="llama3.2"
+export LLM_MODEL="llama3:latest"
 
 # Optional: Create .env file
 cp .env.example .env
@@ -214,7 +219,7 @@ The fastest way to get started:
 docker-compose up -d
 
 # Test the orchestration endpoint
-curl -X POST http://localhost:8003/orchestrate \
+curl -X POST http://localhost:8000/orchestrate \
   -H "Content-Type: application/json" \
   -d '{"topic": "climate change", "min_verified_stats": 5}'
 
@@ -355,17 +360,7 @@ See [MCP_SERVER.md](MCP_SERVER.md) for detailed setup instructions.
 You can also call the agents directly via HTTP (works with both Docker and local deployment):
 
 ```bash
-# Call Eino orchestration agent (recommended - deterministic)
-curl -X POST http://localhost:8003/orchestrate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "topic": "climate change",
-    "min_verified_stats": 10,
-    "max_candidates": 30,
-    "reputable_only": true
-  }'
-
-# Or call ADK orchestration agent (LLM-based)
+# Call orchestration agent (port 8000 - supports both ADK and Eino)
 curl -X POST http://localhost:8000/orchestrate \
   -H "Content-Type: application/json" \
   -d '{
@@ -384,7 +379,7 @@ curl -X POST http://localhost:8000/orchestrate \
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LLM_PROVIDER` | LLM provider: `gemini`, `claude`, `openai`, `ollama` | `gemini` |
+| `LLM_PROVIDER` | LLM provider: `gemini`, `claude`, `openai`, `xai`, `ollama` | `gemini` |
 | `LLM_MODEL` | Model name (provider-specific) | See defaults below |
 | `LLM_API_KEY` | Generic API key (overrides provider-specific) | - |
 | `LLM_BASE_URL` | Base URL for custom endpoints (Ollama, etc.) | - |
@@ -395,13 +390,15 @@ curl -X POST http://localhost:8000/orchestrate \
 | `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Google API key for Gemini | **Required for Gemini** |
 | `ANTHROPIC_API_KEY` / `CLAUDE_API_KEY` | Anthropic API key for Claude | **Required for Claude** |
 | `OPENAI_API_KEY` | OpenAI API key | **Required for OpenAI** |
+| `XAI_API_KEY` | xAI API key for Grok | **Required for xAI** |
 | `OLLAMA_URL` | Ollama server URL | `http://localhost:11434` |
 
 **Default Models by Provider:**
 - Gemini: `gemini-2.0-flash-exp`
 - Claude: `claude-3-5-sonnet-20241022`
 - OpenAI: `gpt-4`
-- Ollama: `llama3.2`
+- xAI: `grok-3`
+- Ollama: `llama3:latest`
 
 See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
 
@@ -420,37 +417,40 @@ See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `RESEARCH_AGENT_URL` | Research agent URL | `http://localhost:8001` |
+| `SYNTHESIS_AGENT_URL` | Synthesis agent URL | `http://localhost:8004` |
 | `VERIFICATION_AGENT_URL` | Verification agent URL | `http://localhost:8002` |
-| `ORCHESTRATOR_URL` | ADK orchestrator URL | `http://localhost:8000` |
-| `ORCHESTRATOR_EINO_URL` | Eino orchestrator URL | `http://localhost:8003` |
+| `ORCHESTRATOR_URL` | Orchestrator URL (both ADK/Eino) | `http://localhost:8000` |
 
 ### Port Configuration
 
 | Agent | HTTP Port | Description |
 |-------|-----------|-------------|
-| Research (ADK) | 8001 | Gemini 2.0 Flash-based research |
-| Verification (ADK) | 8002 | Gemini 2.0 Flash-based verification |
-| Orchestration (ADK) | 8000 | LLM-based orchestration |
-| **Orchestration (Eino)** ⭐ | **8003** | **Deterministic graph orchestration (recommended)** |
+| Research (ADK) | 8001 | Web search via Serper/SerpAPI |
+| Verification (ADK) | 8002 | LLM-based verification |
+| Synthesis (ADK) | 8004 | LLM-based statistics extraction |
+| **Orchestration (ADK/Eino)** ⭐ | **8000** | **Both orchestrators (run one at a time)** |
 
 ## Project Structure
 
 ```
 stats-agent/
 ├── agents/
-│   ├── orchestration/      # Orchestration agent (Google ADK)
+│   ├── orchestration/      # Orchestration agent (Google ADK, port 8000)
 │   │   └── main.go
-│   ├── orchestration-eino/ # Orchestration agent (Eino) ⭐
+│   ├── orchestration-eino/ # Orchestration agent (Eino, port 8000) ⭐
 │   │   └── main.go
-│   ├── research/           # Research agent (Google ADK)
+│   ├── research/           # Research agent (port 8001)
 │   │   └── main.go
-│   └── verification/       # Verification agent (Google ADK)
+│   ├── synthesis/          # Synthesis agent (Google ADK, port 8004) ⭐
+│   │   └── main.go
+│   └── verification/       # Verification agent (Google ADK, port 8002)
 │       └── main.go
 ├── pkg/
 │   ├── config/            # Configuration management
-│   │   └── config.go
-│   └── models/            # Shared data models
-│       └── statistic.go
+│   ├── direct/            # Direct LLM search service
+│   ├── llm/               # Multi-provider LLM factory
+│   ├── models/            # Shared data models
+│   └── orchestration/     # Orchestration logic
 ├── main.go                # CLI entry point
 ├── Makefile              # Build and run commands
 ├── go.mod                # Go dependencies
@@ -488,7 +488,8 @@ make clean
   - Google Gemini (default) - Gemini 2.0 Flash ⭐
   - Anthropic Claude - Claude 3.5 Sonnet
   - OpenAI - GPT-4
-  - Ollama - Local models (llama3.2, etc.)
+  - xAI - Grok-3
+  - Ollama - Local models (llama3:latest, etc.)
 - **Search**: Configurable (Google Search, etc.)
 
 ## How It Works
