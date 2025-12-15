@@ -276,7 +276,7 @@ func extractJSONFromMarkdown(response string) string {
 }
 
 // Synthesize processes a synthesis request directly
-func (sa *SynthesisAgent) Synthesize(ctx context.Context, req *models.SynthesisRequest) (*models.SynthesisResponse, error) {
+func (sa *SynthesisAgent) Synthesize(ctx context.Context, req *models.SynthesisRequest) (*models.SynthesisResponse, error) { // nolint:unparam // error return kept for future usage
 	log.Printf("Synthesis Agent: Processing %d search results for topic: %s", len(req.SearchResults), req.Topic)
 
 	var candidates []models.CandidateStatistic
@@ -408,9 +408,11 @@ func min(a, b int) int {
 	return b
 }
 
+/*
 func max(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
 }
+*/

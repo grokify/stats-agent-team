@@ -45,7 +45,7 @@ type SearchCommand struct {
 }
 
 // Execute runs the search command
-func (cmd *SearchCommand) Execute(args []string) error {
+func (cmd *SearchCommand) Execute([]string) error { // param `args []string`
 	topic := cmd.Args.Topic
 
 	cfg := config.LoadConfig()
@@ -107,7 +107,9 @@ func (cmd *SearchCommand) Execute(args []string) error {
 		// Ask user if they want to continue
 		fmt.Printf("\n\nWould you like to search for more statistics? (y/n): ")
 		var answer string
-		fmt.Scanln(&answer)
+		if _, err := fmt.Scanln(&answer); err != nil {
+			return fmt.Errorf("orchestration failed: %w", err)
+		}
 
 		if answer != "y" && answer != "Y" && answer != "yes" {
 			fmt.Printf("\nStopping with %d verified statistics.\n", totalVerified)
