@@ -123,6 +123,7 @@ style: |
     padding: 2px 8px;
     border-radius: 4px;
     border: 1px solid rgba(124, 77, 255, 0.3);
+    font-variant-ligatures: none;
   }
 
   section pre {
@@ -134,6 +135,7 @@ style: |
     padding: 20px;
     margin: 1em 0;
     box-shadow: 0 4px 20px rgba(124, 77, 255, 0.2);
+    font-variant-ligatures: none;
   }
 
   section pre code {
