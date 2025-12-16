@@ -191,7 +191,8 @@ style: |
   }
 
   section tr:hover td {
-    background: rgba(124, 77, 255, 0.15);
+    background: rgba(124, 77, 255, 0.3);
+    color: #ffffff;
   }
 
   section blockquote {
