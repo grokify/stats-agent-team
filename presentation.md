@@ -1506,17 +1506,17 @@ Looking ahead, we have an exciting roadmap. Q one twenty twenty-five priorities 
 
 # Roadmap 🗺️
 
-**Q1 2025**
+**Q1 2026**
 - ✨ Perplexity API integration (built-in search)
 - ✨ Range statistics (`value_max` field)
 - ✨ Response streaming for faster UX
 
-**Q2 2025**
+**Q2 2026**
 - ✨ Multi-language support (ES, FR, DE, ZH)
 - ✨ Caching layer for search results
 - ✨ GraphQL API option
 
-**Q3 2025**
+**Q3 2026**
 - ✨ Browser extension for fact-checking
 - ✨ Notion/Confluence integrations
 - ✨ Advanced citation formats (APA, MLA)
