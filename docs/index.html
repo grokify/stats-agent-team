@@ -3932,6 +3932,8 @@ section::before {
         <span class="hljs-keyword">return</span> createXAIClient(cfg)
     <span class="hljs-keyword">case</span> <span class="hljs-string">&quot;ollama&quot;</span>:
         <span class="hljs-keyword">return</span> createOllamaClient(cfg)
+    <span class="hljs-keyword">default</span>:
+        <span class="hljs-keyword">return</span> <span class="hljs-literal">nil</span>, <span class="hljs-string">&quot;&quot;</span>, fmt.Errorf(<span class="hljs-string">&quot;unsupported provider: %s&quot;</span>, cfg.LLMProvider)
     }
 }
 </code></pre>
@@ -12500,24 +12502,20 @@ section::before {
 ;" data-marpit-pagination-total="54">
 <h1 id="migration-path-%F0%9F%9A%80">Migration Path <img class="emoji" draggable="false" alt="🚀" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f680.svg" data-marp-twemoji=""/></h1>
 <p><strong>From Direct LLM Usage</strong></p>
-<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python"><span class="hljs-comment"># Before: Client-side LLM</span>
-response = openai.chat(<span class="hljs-string">&quot;Find climate statistics&quot;</span>)
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-go"><span class="hljs-comment">// Before: Client-side LLM</span>
+resp, err := llmClient.Generate(ctx, <span class="hljs-string">&quot;Find climate statistics&quot;</span>)
 
-<span class="hljs-comment"># After: Stats Agent Direct mode</span>
-response = requests.post(
-    <span class="hljs-string">&quot;http://localhost:8005/search&quot;</span>,
-    json={<span class="hljs-string">&quot;topic&quot;</span>: <span class="hljs-string">&quot;climate change&quot;</span>, <span class="hljs-string">&quot;min_stats&quot;</span>: <span class="hljs-number">10</span>}
-)
+<span class="hljs-comment">// After: Stats Agent Direct mode</span>
+body := DirectSearchRequest{Topic: <span class="hljs-string">&quot;climate change&quot;</span>, MinStats: <span class="hljs-number">10</span>}
+resp, err := http.Post(<span class="hljs-string">&quot;http://localhost:8005/search&quot;</span>, <span class="hljs-string">&quot;application/json&quot;</span>, body)
 </code></pre>
-<p><strong>From ChatGPT API</strong></p>
-<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-python"><span class="hljs-comment"># Before: ChatGPT (no verification)</span>
-stats = ask_chatgpt(<span class="hljs-string">&quot;climate statistics&quot;</span>)
+<p><strong>From Other APIs</strong></p>
+<pre is="marp-pre" data-auto-scaling="downscale-only"><code class="language-go"><span class="hljs-comment">// Before: Direct LLM call (no verification)</span>
+stats, err := getLLMStats(ctx, <span class="hljs-string">&quot;climate statistics&quot;</span>)
 
-<span class="hljs-comment"># After: Stats Agent Pipeline (verified)</span>
-response = requests.post(
-    <span class="hljs-string">&quot;http://localhost:8000/orchestrate&quot;</span>,
-    json={<span class="hljs-string">&quot;topic&quot;</span>: <span class="hljs-string">&quot;climate change&quot;</span>, <span class="hljs-string">&quot;min_verified_stats&quot;</span>: <span class="hljs-number">10</span>}
-)
+<span class="hljs-comment">// After: Stats Agent Pipeline (verified)</span>
+body := OrchestrationRequest{Topic: <span class="hljs-string">&quot;climate change&quot;</span>, MinVerifiedStats: <span class="hljs-number">10</span>}
+resp, err := http.Post(<span class="hljs-string">&quot;http://localhost:8000/orchestrate&quot;</span>, <span class="hljs-string">&quot;application/json&quot;</span>, body)
 </code></pre>
 </section>
 </foreignObject></svg><svg data-marpit-svg="" viewBox="0 0 1280 720"><foreignObject width="1280" height="720"><section id="48" data-paginate="true" data-theme="default" data-style="@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap');

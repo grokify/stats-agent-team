@@ -621,6 +621,8 @@ func CreateLLM(cfg *config.Config) (*genai.Client, string, error) {
         return createXAIClient(cfg)
     case "ollama":
         return createOllamaClient(cfg)
+    default:
+        return nil, "", fmt.Errorf("unsupported provider: %s", cfg.LLMProvider)
     }
 }
 ```
@@ -1474,27 +1476,23 @@ Migration from existing systems is straightforward. If you're using direct LLM c
 # Migration Path 🚀
 
 **From Direct LLM Usage**
-```python
-# Before: Client-side LLM
-response = openai.chat("Find climate statistics")
+```go
+// Before: Client-side LLM
+resp, err := llmClient.Generate(ctx, "Find climate statistics")
 
-# After: Stats Agent Direct mode
-response = requests.post(
-    "http://localhost:8005/search",
-    json={"topic": "climate change", "min_stats": 10}
-)
+// After: Stats Agent Direct mode
+body := DirectSearchRequest{Topic: "climate change", MinStats: 10}
+resp, err := http.Post("http://localhost:8005/search", "application/json", body)
 ```
 
-**From ChatGPT API**
-```python
-# Before: ChatGPT (no verification)
-stats = ask_chatgpt("climate statistics")
+**From Other APIs**
+```go
+// Before: Direct LLM call (no verification)
+stats, err := getLLMStats(ctx, "climate statistics")
 
-# After: Stats Agent Pipeline (verified)
-response = requests.post(
-    "http://localhost:8000/orchestrate",
-    json={"topic": "climate change", "min_verified_stats": 10}
-)
+// After: Stats Agent Pipeline (verified)
+body := OrchestrationRequest{Topic: "climate change", MinVerifiedStats: 10}
+resp, err := http.Post("http://localhost:8000/orchestrate", "application/json", body)
 ```
 
 ---
