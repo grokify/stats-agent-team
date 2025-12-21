@@ -4,22 +4,73 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/grokify/fluxllm"
+	fluxllmhook "github.com/grokify/observai/integrations/fluxllm"
+	"github.com/grokify/observai/llmops"
 	"google.golang.org/adk/model"
 	"google.golang.org/adk/model/gemini"
 	"google.golang.org/genai"
 
 	"github.com/grokify/stats-agent-team/pkg/config"
 	"github.com/grokify/stats-agent-team/pkg/llm/adapters"
+
+	// Import observability providers (driver registration via init())
+	_ "github.com/grokify/observai/llmops/langfuse"
+	_ "github.com/grokify/observai/llmops/opik"
+	_ "github.com/grokify/observai/llmops/phoenix"
 )
 
 // ModelFactory creates LLM models based on configuration
 type ModelFactory struct {
-	cfg *config.Config
+	cfg      *config.Config
+	obsHook  fluxllm.ObservabilityHook
+	obsClose func() error
 }
 
 // NewModelFactory creates a new model factory
 func NewModelFactory(cfg *config.Config) *ModelFactory {
-	return &ModelFactory{cfg: cfg}
+	mf := &ModelFactory{cfg: cfg}
+
+	// Initialize observability if enabled
+	if cfg.ObservabilityEnabled && cfg.ObservabilityProvider != "" {
+		hook, closeFn := mf.initObservability()
+		mf.obsHook = hook
+		mf.obsClose = closeFn
+	}
+
+	return mf
+}
+
+// initObservability initializes the observability provider and returns a hook
+func (mf *ModelFactory) initObservability() (fluxllm.ObservabilityHook, func() error) {
+	opts := []llmops.ClientOption{
+		llmops.WithProjectName(mf.cfg.ObservabilityProject),
+	}
+
+	if mf.cfg.ObservabilityAPIKey != "" {
+		opts = append(opts, llmops.WithAPIKey(mf.cfg.ObservabilityAPIKey))
+	}
+
+	if mf.cfg.ObservabilityEndpoint != "" {
+		opts = append(opts, llmops.WithEndpoint(mf.cfg.ObservabilityEndpoint))
+	}
+
+	provider, err := llmops.Open(mf.cfg.ObservabilityProvider, opts...)
+	if err != nil {
+		// Log error but don't fail - observability is optional
+		fmt.Printf("Warning: failed to initialize observability provider %s: %v\n", mf.cfg.ObservabilityProvider, err)
+		return nil, nil
+	}
+
+	return fluxllmhook.NewHook(provider), provider.Close
+}
+
+// Close cleans up resources (call when factory is no longer needed)
+func (mf *ModelFactory) Close() error {
+	if mf.obsClose != nil {
+		return mf.obsClose()
+	}
+	return nil
 }
 
 // CreateModel creates an LLM model based on the configured provider
@@ -61,7 +112,7 @@ func (mf *ModelFactory) createGeminiModel(ctx context.Context) (model.LLM, error
 	})
 }
 
-// createClaudeModel creates a Claude model using gollm
+// createClaudeModel creates a Claude model using FluxLLM
 func (mf *ModelFactory) createClaudeModel() (model.LLM, error) {
 	apiKey := mf.cfg.ClaudeAPIKey
 	if apiKey == "" {
@@ -77,10 +128,15 @@ func (mf *ModelFactory) createClaudeModel() (model.LLM, error) {
 		modelName = "claude-3-5-sonnet-20241022"
 	}
 
-	return adapters.NewGollmAdapter("anthropic", apiKey, modelName)
+	return adapters.NewFluxLLMAdapterWithConfig(adapters.FluxLLMAdapterConfig{
+		ProviderName:      "anthropic",
+		APIKey:            apiKey,
+		ModelName:         modelName,
+		ObservabilityHook: mf.obsHook,
+	})
 }
 
-// createOpenAIModel creates an OpenAI model using gollm
+// createOpenAIModel creates an OpenAI model using FluxLLM
 func (mf *ModelFactory) createOpenAIModel() (model.LLM, error) {
 	apiKey := mf.cfg.OpenAIAPIKey
 	if apiKey == "" {
@@ -96,10 +152,15 @@ func (mf *ModelFactory) createOpenAIModel() (model.LLM, error) {
 		modelName = "gpt-4o-mini" // Use mini for cost efficiency
 	}
 
-	return adapters.NewGollmAdapter("openai", apiKey, modelName)
+	return adapters.NewFluxLLMAdapterWithConfig(adapters.FluxLLMAdapterConfig{
+		ProviderName:      "openai",
+		APIKey:            apiKey,
+		ModelName:         modelName,
+		ObservabilityHook: mf.obsHook,
+	})
 }
 
-// createXAIModel creates an xAI Grok model using gollm
+// createXAIModel creates an xAI Grok model using FluxLLM
 func (mf *ModelFactory) createXAIModel() (model.LLM, error) {
 	apiKey := mf.cfg.XAIAPIKey
 	if apiKey == "" {
@@ -115,10 +176,15 @@ func (mf *ModelFactory) createXAIModel() (model.LLM, error) {
 		modelName = "grok-3"
 	}
 
-	return adapters.NewGollmAdapter("xai", apiKey, modelName)
+	return adapters.NewFluxLLMAdapterWithConfig(adapters.FluxLLMAdapterConfig{
+		ProviderName:      "xai",
+		APIKey:            apiKey,
+		ModelName:         modelName,
+		ObservabilityHook: mf.obsHook,
+	})
 }
 
-// createOllamaModel creates an Ollama model using gollm
+// createOllamaModel creates an Ollama model using FluxLLM
 func (mf *ModelFactory) createOllamaModel() (model.LLM, error) {
 	modelName := mf.cfg.LLMModel
 	if modelName == "" {
@@ -126,8 +192,13 @@ func (mf *ModelFactory) createOllamaModel() (model.LLM, error) {
 	}
 
 	// Ollama doesn't need an API key for local instances
-	// gollm will use the base URL from environment or default to localhost
-	return adapters.NewGollmAdapter("ollama", "", modelName)
+	// FluxLLM will use the base URL from environment or default to localhost
+	return adapters.NewFluxLLMAdapterWithConfig(adapters.FluxLLMAdapterConfig{
+		ProviderName:      "ollama",
+		APIKey:            "",
+		ModelName:         modelName,
+		ObservabilityHook: mf.obsHook,
+	})
 }
 
 // GetProviderInfo returns information about the current provider

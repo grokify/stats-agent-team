@@ -112,6 +112,8 @@ The system implements a **4-agent architecture** with clear separation of concer
 - ✅ **Multi-LLM providers** - Gemini, Claude, OpenAI, Ollama, xAI Grok via unified interface
 - ✅ **Google ADK integration** - For LLM-based agents
 - ✅ **Eino framework** - Deterministic graph orchestration ⭐ Recommended
+- ✅ **A2A Protocol** - Agent-to-Agent interoperability (Google standard) 🔗
+- ✅ **LLM Observability** - ObservAI integration (Opik, Langfuse, Phoenix) 👁️
 - ✅ **Huma v2** - OpenAPI 3.1 docs for Direct agent
 - ✅ **MCP Server** - Integration with Claude Code and other MCP clients
 - ✅ **Docker deployment** - Easy containerized setup 🐳
@@ -428,11 +430,11 @@ curl -X POST http://localhost:8000/orchestrate \
 | `OLLAMA_URL` | Ollama server URL | `http://localhost:11434` |
 
 **Default Models by Provider:**
-- Gemini: `gemini-2.0-flash-exp`
-- Claude: `claude-3-5-sonnet-20241022`
-- OpenAI: `gpt-4`
-- xAI: `grok-3`
-- Ollama: `llama3:latest`
+- Gemini: `gemini-2.5-flash` (or `gemini-2.5-pro`)
+- Claude: `claude-sonnet-4-20250514` (or `claude-opus-4-1-20250805`)
+- OpenAI: `gpt-4o` (or `gpt-5`)
+- xAI: `grok-4-1-fast-reasoning` (or `grok-4-1-fast-non-reasoning`)
+- Ollama: `llama3:8b` (or `mistral:7b`)
 
 See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
 
@@ -446,6 +448,21 @@ See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
 
 **Note:** Without a search API key, the research agent will use mock data. See [SEARCH_INTEGRATION.md](SEARCH_INTEGRATION.md) for setup details.
 
+#### Observability Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OBSERVABILITY_ENABLED` | Enable LLM observability | `false` |
+| `OBSERVABILITY_PROVIDER` | Provider: `opik`, `langfuse`, `phoenix` | `opik` |
+| `OBSERVABILITY_API_KEY` | API key for the provider | - |
+| `OBSERVABILITY_ENDPOINT` | Custom endpoint (optional) | Provider default |
+| `OBSERVABILITY_PROJECT` | Project name for grouping traces | `stats-agent-team` |
+
+**Supported Providers:**
+- [Comet Opik](https://www.comet.com/site/products/opik/) - LLM tracing and evaluation
+- [Langfuse](https://langfuse.com/) - Open-source LLM observability
+- [Arize Phoenix](https://phoenix.arize.com/) - ML observability platform
+
 #### Other Configuration
 
 | Variable | Description | Default |
@@ -457,13 +474,21 @@ See [LLM_CONFIGURATION.md](LLM_CONFIGURATION.md) for detailed LLM setup.
 
 ### Port Configuration
 
-| Agent | HTTP Port | Description |
-|-------|-----------|-------------|
-| Research (ADK) | 8001 | Web search via Serper/SerpAPI |
-| Verification (ADK) | 8002 | LLM-based verification |
-| Synthesis (ADK) | 8004 | LLM-based statistics extraction |
-| **Direct (Huma)** ⭐ | **8005** | **Direct LLM search with OpenAPI docs** |
-| **Orchestration (ADK/Eino)** ⭐ | **8000** | **Both orchestrators (run one at a time)** |
+Each agent exposes both HTTP and A2A (Agent-to-Agent) protocol endpoints:
+
+| Agent | HTTP Port | A2A Port | Description |
+|-------|-----------|----------|-------------|
+| **Orchestration (ADK/Eino)** ⭐ | **8000** | **9000** | Graph-based workflow coordination |
+| Research (ADK) | 8001 | 9001 | Web search via Serper/SerpAPI |
+| Verification (ADK) | 8002 | 9002 | LLM-based verification |
+| Synthesis (ADK) | 8004 | 9004 | LLM-based statistics extraction |
+| **Direct (Huma)** ⭐ | **8005** | - | Direct LLM search with OpenAPI docs |
+
+**A2A Endpoints per Agent:**
+- `GET /.well-known/agent-card.json` - Agent discovery
+- `POST /invoke` - JSON-RPC execution
+
+Enable A2A with: `A2A_ENABLED=true`
 
 ## Project Structure
 
@@ -485,7 +510,8 @@ stats-agent/
 ├── pkg/
 │   ├── config/            # Configuration management
 │   ├── direct/            # Direct LLM search service
-│   ├── llm/               # Multi-provider LLM factory
+│   ├── llm/               # Multi-provider LLM factory (FluxLLM + ObservAI)
+│   │   └── adapters/      # FluxLLM adapter for ADK integration
 │   ├── models/            # Shared data models
 │   └── orchestration/     # Orchestration logic
 ├── main.go                # CLI entry point
@@ -519,15 +545,18 @@ make clean
 
 - **Language**: Go 1.21+
 - **Agent Frameworks**:
-  - [Google ADK (Agent Development Kit)](https://github.com/google/adk-go) - LLM-based agents ⭐
+  - [Google ADK (Agent Development Kit)](https://github.com/google/adk-go) - LLM-based agents + A2A protocol ⭐
   - [Eino](https://github.com/cloudwego/eino) - Deterministic graph orchestration ⭐
-- **LLM Providers** (configurable):
-  - Google Gemini (default) - Gemini 2.0 Flash ⭐
-  - Anthropic Claude - Claude 3.5 Sonnet
-  - OpenAI - GPT-4
-  - xAI - Grok-3
-  - Ollama - Local models (llama3:latest, etc.)
-- **Search**: Configurable (Google Search, etc.)
+- **LLM Integration**:
+  - [FluxLLM](https://github.com/grokify/fluxllm) - Multi-provider LLM abstraction
+  - Supports: Gemini, Claude, OpenAI, xAI Grok, Ollama
+- **Observability**:
+  - [ObservAI](https://github.com/grokify/observai) - Unified LLM observability
+  - Supports: Comet Opik, Langfuse, Arize Phoenix
+- **Protocols**:
+  - HTTP - Custom security, flexibility (ports 800x)
+  - A2A - Agent-to-Agent interoperability (ports 900x)
+- **Search**: Serper/SerpAPI via [MetaSerp](https://github.com/grokify/metaserp)
 
 ## How It Works
 
@@ -557,6 +586,10 @@ The research agent prioritizes these source types:
 - **Insufficient Results**: Automatic retry with more candidates
 - **Max Retries Exceeded**: Returns partial results with warning
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features including Perplexity integration, multi-language support, and browser extension.
+
 ## Contributing
 
 Contributions welcome! Please:
@@ -571,7 +604,9 @@ Contributions welcome! Please:
 
 - Built with [Google ADK (Agent Development Kit)](https://github.com/google/adk-go)
 - Uses [Eino](https://github.com/cloudwego/eino) for deterministic orchestration
-- Powered by Google Gemini 2.0 Flash model
+- Multi-LLM support via [FluxLLM](https://github.com/grokify/fluxllm)
+- LLM observability via [ObservAI](https://github.com/grokify/observai)
+- A2A protocol for agent interoperability
 - Inspired by multi-agent collaboration frameworks
 
  [used-by-svg]: https://sourcegraph.com/github.com/grokify/stats-agent-team/-/badge.svg

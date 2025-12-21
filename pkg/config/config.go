@@ -35,6 +35,13 @@ type Config struct {
 	A2AEnabled   bool
 	A2AAuthType  string // "jwt", "apikey", "oauth2"
 	A2AAuthToken string
+
+	// Observability Configuration
+	ObservabilityEnabled  bool   // Enable LLM observability
+	ObservabilityProvider string // "opik", "langfuse", "phoenix"
+	ObservabilityAPIKey   string
+	ObservabilityEndpoint string // Custom endpoint (optional)
+	ObservabilityProject  string // Project name for grouping traces
 }
 
 // LoadConfig loads configuration from environment variables
@@ -71,6 +78,13 @@ func LoadConfig() *Config {
 		A2AEnabled:   getEnv("A2A_ENABLED", "true") == "true",
 		A2AAuthType:  getEnv("A2A_AUTH_TYPE", "apikey"),
 		A2AAuthToken: getEnv("A2A_AUTH_TOKEN", ""),
+
+		// Observability
+		ObservabilityEnabled:  getEnv("OBSERVABILITY_ENABLED", "false") == "true",
+		ObservabilityProvider: getEnv("OBSERVABILITY_PROVIDER", "opik"),
+		ObservabilityAPIKey:   getEnv("OBSERVABILITY_API_KEY", getEnv("OPIK_API_KEY", "")),
+		ObservabilityEndpoint: getEnv("OBSERVABILITY_ENDPOINT", ""),
+		ObservabilityProject:  getEnv("OBSERVABILITY_PROJECT", "stats-agent-team"),
 	}
 
 	// Set LLMAPIKey based on provider if not explicitly set
