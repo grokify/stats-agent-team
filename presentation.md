@@ -1,252 +1,101 @@
 ---
 marp: true
-theme: default
+theme: vibeminds
 paginate: true
 style: |
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-  section {
-    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-    color: #e8eaf6;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-size: 24px;
-    padding: 40px 60px;
-    padding-top: 35px;
-  }
-
-  section * {
-    border-top-color: transparent !important;
-    border-bottom-color: transparent !important;
-  }
-
-  /* Definition lists - this is what causes the horizontal lines */
-  section dt, section dd {
-    border: none !important;
-    border-top: none !important;
-    border-bottom: none !important;
-    padding-bottom: 0 !important;
-    margin-bottom: 0 !important;
-  }
-
-  section dt::after, section dd::before {
-    border: none !important;
-    content: none !important;
-  }
-
-  section dl {
-    border: none !important;
-    margin: 0;
-    padding: 0;
-  }
-
-  section dl::before, section dl::after {
-    border: none !important;
-    content: none !important;
-  }
-
-  /* Target the actual elements more aggressively */
-  dt, dd, dl {
-    border: 0 !important;
-    border-top-width: 0 !important;
-    border-bottom-width: 0 !important;
-    outline: none !important;
-  }
-
-  section::after {
-    content: attr(data-marpit-pagination) ' / ' attr(data-marpit-pagination-total);
-    position: absolute;
-    bottom: 20px;
-    right: 60px;
-    font-size: 14px;
-    color: #7c4dff;
-    font-weight: 600;
-  }
-
-  section h1 {
-    font-size: 47px;
-    font-weight: 700;
-    margin-top: 0;
-    margin-bottom: 0.3em;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.2;
-    border: none;
-    border-top: none;
-    border-bottom: none;
-  }
-
-  section h2 {
-    font-size: 36px;
-    font-weight: 600;
-    color: #b39ddb;
-    margin-top: 0.5em;
-    margin-bottom: 0.4em;
-    border: none;
-  }
-
-  section h3 {
-    font-size: 28px;
-    font-weight: 600;
-    color: #9575cd;
-    border: none;
-  }
-
-  section p, section li {
-    font-size: 22px;
-    line-height: 1.6;
-    color: #e8eaf6;
-  }
-
-  section strong {
-    color: #7c4dff;
-    font-weight: 600;
-  }
-
-  section em {
-    color: #b39ddb;
-    font-style: italic;
-  }
-
-  section a {
-    color: #7c4dff;
-    text-decoration: none;
-    border-bottom: 2px solid #7c4dff;
-  }
-
-  section code {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 20px;
-    background: rgba(124, 77, 255, 0.15);
-    color: #b39ddb;
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(124, 77, 255, 0.3);
-    font-variant-ligatures: none;
-  }
-
-  section pre {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 18px;
-    background: rgba(15, 12, 41, 0.6);
-    border: 1px solid #7c4dff;
-    border-radius: 8px;
-    padding: 20px;
-    margin: 1em 0;
-    box-shadow: 0 4px 20px rgba(124, 77, 255, 0.2);
-    font-variant-ligatures: none;
-  }
-
-  section pre code {
-    background: transparent;
-    border: none;
-    padding: 0;
-    color: #f5f5f5;
-  }
-
-  section pre code .hljs-string,
-  section pre code .hljs-attr {
-    color: #e8eaf6;
-  }
-
-  section ul, section ol {
+  /* Mermaid diagram styling */
+  .mermaid-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
     margin: 0.5em 0;
-    border: none;
-    border-top: none;
-    border-bottom: none;
   }
 
-  section li {
-    margin: 0.27em 0;
-    line-height: 1.44;
-    font-size: 20px;
-    border: none;
-  }
-
-  section table {
-    border-collapse: collapse;
-    margin: 1em auto;
-    background: rgba(15, 12, 41, 0.6);
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid rgba(124, 77, 255, 0.3);
-  }
-
-  section th {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #ffffff;
-    font-weight: 600;
-    padding: 12px 20px;
-    text-align: left;
-  }
-
-  section td {
-    padding: 10px 20px;
-    border-bottom: 1px solid rgba(124, 77, 255, 0.2);
-    color: #e8eaf6;
-    background: rgba(15, 12, 41, 0.4);
-  }
-
-  section tr:last-child td {
-    border-bottom: none;
-  }
-
-  section tr:hover td {
-    background: rgba(124, 77, 255, 0.3);
-    color: #ffffff;
-  }
-
-  section blockquote {
-    border-left: 4px solid #7c4dff;
-    background: rgba(124, 77, 255, 0.1);
-    padding: 12px 20px;
-    margin: 1em 0;
-    border-radius: 0 8px 8px 0;
-  }
-
-  /* Title slide styling */
-  section:first-of-type h1 {
-    font-size: 58px;
+  .mermaid {
     text-align: center;
+  }
+
+  .mermaid svg {
+    max-height: 280px;
+    width: auto;
+  }
+
+  .mermaid .node rect,
+  .mermaid .node polygon {
+    rx: 5px;
+    ry: 5px;
+  }
+
+  .mermaid .nodeLabel {
+    padding: 0 10px;
+  }
+
+  /* Two-column layout */
+  .columns {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+  }
+
+  .column-left {
+    flex: 1;
+  }
+
+  .column-right {
+    flex: 1;
+  }
+
+  .column-left .mermaid svg {
+    min-height: 400px;
+    height: auto;
+    max-height: 500px;
+  }
+
+  /* Section divider slides */
+  section.section-divider {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(135deg, #1a1a3e 0%, #4a3f8a 50%, #2d2d5a 100%);
+  }
+
+  section.section-divider h1 {
+    font-size: 3.5em;
+    margin-bottom: 0.2em;
+  }
+
+  section.section-divider h2 {
+    font-size: 1.5em;
+    color: #b39ddb;
+    font-weight: 400;
+  }
+
+  section.section-divider p {
+    font-size: 1.1em;
+    color: #9575cd;
     margin-top: 1em;
   }
-
-  section:first-of-type h2 {
-    text-align: center;
-    font-size: 32px;
-    color: #b39ddb;
-  }
-
-  section:first-of-type p {
-    text-align: center;
-    font-size: 22px;
-    color: #9575cd;
-  }
-
-  /* Emoji and icon styling */
-  section img[alt~="emoji"], section img[alt~="icon"] {
-    height: 1.2em;
-    vertical-align: middle;
-  }
-
-  /* Hide any horizontal rules that Marp might generate */
-  section hr {
-    display: none;
-  }
-
-  /* VibeMinds.AI branding footer */
-  section::before {
-    content: 'VibeMinds.AI';
-    position: absolute;
-    bottom: 20px;
-    left: 60px;
-    font-size: 12px;
-    color: #7c4dff;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
 ---
+
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    background: 'transparent',
+    primaryColor: '#7c4dff',
+    primaryTextColor: '#e8eaf6',
+    primaryBorderColor: '#667eea',
+    lineColor: '#b39ddb',
+    secondaryColor: '#302b63',
+    tertiaryColor: '#24243e'
+  }
+});
+</script>
 
 <!-- _paginate: false -->
 
@@ -263,6 +112,21 @@ This project was born out of a fundamental problem: how can we trust the statist
 **A Production-Ready Implementation**
 
 Built with Google ADK, Eino, and Multi-LLM Support
+
+---
+
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+
+<!--
+Section 1: Introduction and Problem Statement. <break time="600ms"/>
+Let's start by understanding the problem we're solving and the requirements for our solution. <break time="800ms"/>
+-->
+
+# Section 1
+## Introduction & Problem Statement
+
+Understanding the challenge of verified statistics
 
 ---
 
@@ -311,6 +175,21 @@ The key challenge here was balancing comprehensiveness with performance. We need
 
 ---
 
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+
+<!--
+Section 2: Architecture and Agent Design. <break time="600ms"/>
+Now let's explore how we designed the multi-agent system with clear separation of concerns. <break time="800ms"/>
+-->
+
+# Section 2
+## Architecture & Agent Design
+
+Four specialized agents working together
+
+---
+
 <!--
 We chose a four-agent architecture with clear separation of concerns. Each agent has a specific responsibility in the pipeline. This modular design allows us to optimize each component independently.
 [PAUSE:1500]
@@ -320,22 +199,132 @@ The architecture decision was crucial. We could have built a monolithic system w
 
 # Architecture Overview 🏗️
 
-```
-User Request → Orchestrator
-                    ↓
-        ┌───────────┼───────────┐
-        ↓           ↓           ↓
-    Research    Synthesis  Verification
-    (Search)    (Extract)   (Validate)
-        ↓           ↓           ↓
-      URLs    Statistics    Verified ✓
-```
+<div class="mermaid" style="display: flex; justify-content: center;">
+flowchart LR
+    A["User/CLI"] --> B["Orchestrator<br/>⚙️ Graph<br/>:8000 | :9000"]
+    M["AI Assistant"] -.->|optional| MCP["MCP Server<br/>🔌 Protocol"]
+    MCP -.-> B
+    B -->|HTTP or A2A| C["Research<br/>⚡ Tool<br/>:8001 | :9001"]
+    B -->|HTTP or A2A| D["Synthesis<br/>🧠 LLM<br/>:8004 | :9004"]
+    B -->|HTTP or A2A| E["Verification<br/>🧠 LLM<br/>:8002 | :9002"]
+    C --> F["URLs"]
+    D --> G["Statistics"]
+    E --> H["Verified"]
+    classDef agent fill:#00bfa5,stroke:#00897b,color:#fff
+    class B,C,D,E agent
+</div>
 
-**4 Specialized Agents** working together:
-1. **Research** - Web search (no LLM needed)
-2. **Synthesis** - LLM-based extraction
-3. **Verification** - Web validation
-4. **Orchestration** - Workflow coordination
+**4 Specialized Agents** with dual protocol support:
+1. **Research** - Tool-based (Search API) - HTTP :8001 | A2A :9001
+2. **Synthesis** - LLM-based extraction - HTTP :8004 | A2A :9004
+3. **Verification** - LLM-based validation - HTTP :8002 | A2A :9002
+4. **Orchestration** - Graph-based workflow - HTTP :8000 | A2A :9000
+
+---
+
+<!--
+An important architectural decision was choosing graph-based orchestration over inter-agent communication. In our system, agents don't talk to each other directly. Instead, the orchestrator calls each agent in sequence, collects results, and passes data to the next stage. This hub-and-spoke pattern gives us predictability and debuggability. We know exactly what order things happen in, we can trace issues easily, and behavior is reproducible. The alternative, letting agents communicate peer-to-peer, would be more flexible but harder to debug and reason about. For production systems handling verified statistics, we prioritized reliability over flexibility.
+[PAUSE:2000]
+-->
+
+# Orchestration Pattern 🔀
+
+**Graph-Based Orchestration** (not inter-agent communication)
+
+<div class="mermaid" style="display: flex; justify-content: center;">
+flowchart LR
+    O["Orchestrator"] -->|"1. search"| R["Research"]
+    R -->|"URLs"| O
+    O -->|"2. extract"| S["Synthesis"]
+    S -->|"candidates"| O
+    O -->|"3. validate"| V["Verification"]
+    V -->|"verified"| O
+</div>
+
+**What This Means**
+- ✅ Hub-and-spoke: Orchestrator coordinates all communication
+- ✅ Sequential pipeline: Predictable execution order
+- ✅ Easy to debug: Clear data flow, reproducible behavior
+- ❌ No peer-to-peer: Agents don't message each other directly
+- ❌ No negotiation: No agent-to-agent collaboration protocols
+
+**Trade-off**: Predictability over flexibility (right choice for production)
+
+---
+
+<!--
+We implemented a dual protocol architecture where every agent exposes both H T T P and A2A endpoints. A2A, or Agent-to-Agent protocol, is Google's open standard for agent interoperability. By supporting both, we get the flexibility to add custom security features like SPIFFE, KYA, and XAA on the H T T P side, while maintaining standard A2A compatibility for agent discovery and invocation. Each agent runs two servers: H T T P on the eight thousand series ports, A2A on the nine thousand series. This lets us compare implementation complexity and choose the right protocol for each use case.
+[PAUSE:2500]
+-->
+
+# Dual Protocol: HTTP + A2A 🔗
+
+**Every agent exposes both protocols simultaneously**
+
+| Protocol | Ports | Purpose |
+|----------|-------|---------|
+| **HTTP** | 800x | Custom security (SPIFFE, KYA, XAA), observability |
+| **A2A** | 900x | Standard agent interoperability (Google protocol) |
+
+**A2A Endpoints per Agent**
+- `GET /.well-known/agent-card.json` - Agent discovery
+- `POST /invoke` - JSON-RPC execution
+
+**Why Both?**
+- ✅ A2A: Standard protocol, agent discovery, interoperability
+- ✅ HTTP: Flexibility for security layers, LLM observability
+- ✅ Compare: Evaluate implementation complexity side-by-side
+
+**Configuration**: `A2A_ENABLED=true` activates A2A servers
+
+---
+
+<!--
+Let's look at the agent types in more detail. We deliberately chose different technologies for each agent based on what they need to do. The orchestrator uses a graph because workflow coordination should be deterministic and predictable. Research uses tool calling because web search is just an A P I call, no reasoning needed. Synthesis and verification use L L Ms because they require language understanding, extracting meaning from unstructured text and comparing excerpts. This mix of technologies, graph plus tool plus L L M, gives us the best of each world. We're not forcing everything through an L L M when simpler approaches work better.
+[PAUSE:2000]
+-->
+
+# Agent Types Summary 🧩
+
+| Agent | Type | Technology | Why? |
+|-------|------|------------|------|
+| **Orchestrator** | ⚙️ Graph | Eino workflow | Deterministic, predictable |
+| **Research** | ⚡ Tool | Serper/SerpAPI | No reasoning needed |
+| **Synthesis** | 🧠 LLM | Gemini/Claude/etc | Language understanding |
+| **Verification** | 🧠 LLM | Gemini/Claude/etc | Fuzzy text matching |
+
+**Key Insight**: Use the right tool for each job
+- ❌ Don't force everything through an LLM
+- ✅ Graph for coordination (fast, predictable)
+- ✅ Tool for API calls (simple, reliable)
+- ✅ LLM for language tasks (intelligent, flexible)
+
+---
+
+<!--
+A fair question we asked early on was whether Google A D K is the right choice. A D K is designed for autonomous agents with inter-agent communication. But now with A2A support, A D K is fully justified. A D K provides the A2A server and client infrastructure we need. All agents, even the tool-based Research agent and the graph-based Eino orchestrator, are wrapped in A D K agents to expose A2A endpoints. This gives us standard agent discovery via agent cards, JSON-RPC invocation, and future interoperability with other A2A-compatible systems.
+[PAUSE:2500]
+-->
+
+# Frameworks: ADK Now Justified ✅
+
+**Original Question**: ADK is for inter-agent communication. Do we need it?
+
+**Answer**: Yes! A2A protocol support requires ADK.
+
+| Agent | ADK Role | A2A Benefit |
+|-------|----------|-------------|
+| **Synthesis** | LLM + A2A server | Standard invocation |
+| **Verification** | LLM + A2A server | Agent discovery |
+| **Research** | Tool wrapper + A2A | Interoperability |
+| **Orchestrator** | Eino wrapped in ADK | A2A compatibility |
+
+**What ADK Provides for A2A**
+- `adka2a.NewExecutor()` - Bridges ADK to A2A protocol
+- `adka2a.BuildAgentSkills()` - Generates agent card skills
+- `remoteagent.NewA2A()` - A2A client for calling remote agents
+
+**Verdict**: ADK is the right choice. A2A support justifies the framework.
 
 ---
 
@@ -412,7 +401,7 @@ maxContentLen := 30000   // (increased from 15K)
 multiplier := 5          // (increased from 2x)
 ```
 
-**Result**: Now matches ChatGPT.com performance! 🎉
+**Result**: Now matches ChatGPT.com performance!
 
 ---
 
@@ -476,25 +465,48 @@ Here's what the Eino workflow looks like. It's a directed graph where each node 
 
 # Eino Orchestration Flow 🔄
 
-```
-ValidateInput
-     ↓
-Research (30 URLs)
-     ↓
-Synthesis (15+ pages → candidates)
-     ↓
-Verification (validate each)
-     ↓
-QualityCheck (≥ min verified?)
-     ↓
-FormatOutput → User
-```
+<div class="columns">
+<div class="column-left">
+<div class="mermaid">
+flowchart TB
+    A["ValidateInput"] --> B["Research&nbsp;<br/>30 URLs"]
+    B --> C["Synthesis<br/>15+ pages -> candidates"]
+    C --> D["Verification&nbsp;<br/>validate each"]
+    D --> E["QualityCheck&nbsp;<br/>>= min verified?"]
+    E --> F["FormatOutput"] --> G["User"]
+</div>
+</div>
+<div class="column-right">
 
 **Why Eino?**
 - Type-safe operations
 - No non-deterministic LLM decisions
 - Easier to debug and test
 - Production-ready reliability
+
+**Benefits:**
+- Predictable execution path
+- No hidden LLM costs for orchestration
+- Easy to trace and monitor
+- Reproducible results
+
+</div>
+</div>
+
+---
+
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+
+<!--
+Section 3: Technical Challenges and Solutions. <break time="600ms"/>
+Let's dive into the specific challenges we encountered and how we solved them. <break time="800ms"/>
+-->
+
+# Section 3
+## Technical Challenges & Solutions
+
+From LLM hallucinations to multi-provider support
 
 ---
 
@@ -604,7 +616,7 @@ The factory pattern was key to solving this cleanly. We created a create L L M f
 [PAUSE:2500]
 -->
 
-# Multi-LLM Implementation 🎯
+# Multi-LLM Implementation 🔧
 
 **Factory Pattern** in `pkg/llm/factory.go`:
 
@@ -654,7 +666,7 @@ export OLLAMA_URL="http://localhost:11434"
 export LLM_MODEL="llama3:8b"
 ```
 
-**No code changes required!** 🎉
+**No code changes required!**
 
 ---
 
@@ -739,7 +751,7 @@ type DirectSearchInput struct {
 huma.Register(api, operation, handler)
 ```
 
-**Port 8005** - Production-ready with docs! 📚
+**Port 8005** - Production-ready with docs!
 
 ---
 
@@ -803,6 +815,21 @@ Return empty array [] ONLY if absolutely no statistics are found.
 
 ---
 
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+
+<!--
+Section 4: Deployment and Integration. <break time="600ms"/>
+Now let's look at how to deploy and integrate the system in production. <break time="800ms"/>
+-->
+
+# Section 4
+## Deployment & Integration
+
+From local development to production
+
+---
+
 <!--
 Deployment was a key consideration. We needed to support both local development and production Docker deployments. Make commands handle local, Docker Compose handles production. Both use the same code and configuration.
 [PAUSE:1500]
@@ -816,19 +843,25 @@ Developer experience matters. You need to be able to run locally for development
 
 ## Local Development
 ```bash
-make run-all-eino  # Start all 4 agents
+make run-all-eino  # Start all 4 agents (HTTP + A2A)
 ./bin/stats-agent search "topic"
 ```
 
 ## Docker Production
 ```bash
 docker-compose up -d  # All agents containerized
-curl -X POST http://localhost:8000/orchestrate
+curl -X POST http://localhost:8000/orchestrate  # HTTP
+# or via A2A: POST http://localhost:9000/invoke
 ```
 
 **Same code, same config** - seamless transition!
 
-**Ports**: 8000-8002, 8004-8005
+| Agent | HTTP | A2A |
+|-------|------|-----|
+| Orchestrator | :8000 | :9000 |
+| Research | :8001 | :9001 |
+| Verification | :8002 | :9002 |
+| Synthesis | :8004 | :9004 |
 
 ---
 
@@ -902,11 +935,11 @@ This J S O N output shows what a verified statistic looks like. The name field d
 {
   "name": "Global temperature increase",
   "value": 1.1,
-  "unit": "°C",
+  "unit": "C",
   "source": "IPCC Sixth Assessment Report",
   "source_url": "https://www.ipcc.ch/...",
   "excerpt": "Global surface temperature has increased
-             by approximately 1.1°C since pre-industrial
+             by approximately 1.1C since pre-industrial
              times...",
   "verified": true
 }
@@ -923,18 +956,20 @@ Let's talk about why we chose each technology. Go was chosen for its concurrency
 [PAUSE:2500]
 -->
 
-# Technology Stack 🛠️
+# Technology Stack ⚙️
 
 **Language & Runtime**
 - Go 1.21+ - Concurrency, performance, simple deployment
 
 **Agent Frameworks**
-- **Google ADK** - LLM-based agent operations
+- **Google ADK** - LLM agents + A2A protocol support
 - **Eino** - Deterministic graph orchestration
+- **A2A Protocol** - Agent-to-agent interoperability (Google)
 
-**API & Docs**
+**API & Protocols**
+- **HTTP** - Custom security, observability (ports 800x)
+- **A2A/JSON-RPC** - Standard agent invocation (ports 900x)
 - **Huma v2** - OpenAPI 3.1 generation
-- **Chi v5** - Lightweight HTTP router
 
 **Integrations**
 - **gollm** - Multi-provider LLM abstraction
@@ -987,6 +1022,21 @@ No system is perfect, and ours has known limitations. Paywalled content behind s
 
 ---
 
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+
+<!--
+Section 5: Operations and Best Practices. <break time="600ms"/>
+Let's explore the operational aspects and best practices for running the system. <break time="800ms"/>
+-->
+
+# Section 5
+## Operations & Best Practices
+
+Running the system in production
+
+---
+
 <!--
 Here's the complete workflow from user query to verified results. Each step is optimized and reliable. The human in the loop retry gives users control when results are partial. This balance of automation and control is key.
 [PAUSE:1500]
@@ -1019,7 +1069,7 @@ Monitoring and observability were important. Each agent logs its operations. We 
 [PAUSE:2500]
 -->
 
-# Monitoring & Observability 📊
+# Monitoring & Observability 👁️
 
 **Structured Logging** at each stage:
 
@@ -1048,7 +1098,7 @@ Make commands provide a simple interface for complex operations. Developers can 
 [PAUSE:2500]
 -->
 
-# Developer Experience 👨‍💻
+# Developer Experience 👩‍💻
 
 **Simple Commands**
 
@@ -1210,7 +1260,7 @@ Performance optimization was iterative. We profiled each agent. Added caching wh
 [PAUSE:2500]
 -->
 
-# Performance Optimization 🚄
+# Performance Optimization ⚡
 
 1. **Research Agent**
     - Parallel URL searches where supported
@@ -1305,6 +1355,21 @@ Community and extensibility were design goals. The multi-provider support means 
 - 📚 Documentation improvements
 
 **License**: MIT (permissive)
+
+---
+
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+
+<!--
+Section 6: Production and Scale. <break time="600ms"/>
+Let's explore production considerations, costs, and scaling strategies. <break time="800ms"/>
+-->
+
+# Section 6
+## Production & Scale
+
+Costs, scaling, and enterprise considerations
 
 ---
 
@@ -1519,6 +1584,21 @@ Looking ahead, we have an exciting roadmap. Q one twenty twenty-five priorities 
 
 ---
 
+<!-- _class: section-divider -->
+<!-- _paginate: false -->
+
+<!--
+Section 7: Conclusion. <break time="600ms"/>
+Let's wrap up with final thoughts and next steps. <break time="800ms"/>
+-->
+
+# Section 7
+## Conclusion
+
+Summary, resources, and next steps
+
+---
+
 <!--
 Team collaboration was key to success. Clear architecture boundaries meant parallel development. Regular sync meetings kept us aligned. Code reviews maintained quality. And documentation ensured knowledge transfer.
 [PAUSE:2500]
@@ -1584,7 +1664,7 @@ Let's wrap up with what we've built and what it means. We created a production-r
 [PAUSE:2500]
 -->
 
-# Conclusion 🎓
+# Conclusion 🎯
 
 **What We Built**
 - Production-ready statistics verification system
@@ -1678,4 +1758,4 @@ For those interested in diving deeper, we have comprehensive documentation. The 
 - Economic indicators
 - Educational metrics
 
-**Try it yourself!** 🚀
+**Try it yourself!**
