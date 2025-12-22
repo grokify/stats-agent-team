@@ -515,10 +515,10 @@ stats-agent/
 │   ├── models/            # Shared data models
 │   └── orchestration/     # Orchestration logic
 ├── main.go                # CLI entry point
-├── Makefile              # Build and run commands
-├── go.mod                # Go dependencies
-├── .env.example          # Environment template
-└── README.md             # This file
+├── Makefile               # Build and run commands
+├── go.mod                 # Go dependencies
+├── .env.example           # Environment template
+└── README.md              # This file
 ```
 
 ## Development
@@ -556,7 +556,9 @@ make clean
 - **Protocols**:
   - HTTP - Custom security, flexibility (ports 800x)
   - A2A - Agent-to-Agent interoperability (ports 900x)
-- **Search**: Serper/SerpAPI via [MetaSerp](https://github.com/grokify/metaserp)
+- **Search**:
+  - [MetaSerp](https://github.com/grokify/metaserp) - Unified serp API abstraction
+  - Supports: Serper.dev, SerpAPI 
 
 ## How It Works
 
