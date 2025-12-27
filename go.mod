@@ -4,7 +4,7 @@ go 1.25.3
 
 require (
 	github.com/a2aproject/a2a-go v0.3.3
-	github.com/cloudwego/eino v0.7.11
+	github.com/cloudwego/eino v0.7.14
 	github.com/danielgtaylor/huma/v2 v2.34.1
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/grokify/metallm v0.8.0
