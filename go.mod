@@ -11,7 +11,7 @@ require (
 	github.com/grokify/metaobserve v0.3.0
 	github.com/grokify/metaserp v0.5.0
 	github.com/jessevdk/go-flags v1.6.1
-	github.com/modelcontextprotocol/go-sdk v1.1.0
+	github.com/modelcontextprotocol/go-sdk v1.2.0
 	google.golang.org/adk v0.3.0
 	google.golang.org/genai v1.40.0
 )
